@@ -10,6 +10,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.style import apply_global_style, section_header, info_card
 from src.analysis import compute_overview_metrics, compute_product_analysis, compute_platform_comparison
 from src.report import generate_full_report
 
@@ -18,6 +19,7 @@ st.set_page_config(page_title="分析报告 | 餐饮数据分析", page_icon="�
 
 
 def main():
+    apply_global_style()
     st.title("📋 智能分析报告")
 
     df = st.session_state.get("df_orders")

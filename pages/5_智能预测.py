@@ -11,6 +11,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.style import apply_global_style, section_header, info_card
 from src.models import run_isolation_forest
 from src.analysis import compute_trend_analysis
 from src.visualization import forecast_chart
@@ -149,6 +150,7 @@ def _forecast_revenue(daily_df: pd.DataFrame, forecast_days: int = 14):
 
 
 def main():
+    apply_global_style()
     st.title("🔮 智能预测 & 异常检测")
 
     df = st.session_state.get("df_orders")

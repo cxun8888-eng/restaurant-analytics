@@ -11,6 +11,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.style import apply_global_style, section_header, info_card
 from src.features import build_rfm_features
 from src.models import run_kmeans_clustering, find_optimal_k
 from src.visualization import (
@@ -24,6 +25,7 @@ st.set_page_config(page_title="用户分析 | 餐饮数据分析", page_icon="�
 
 
 def main():
+    apply_global_style()
     st.title("👤 用户分析 — RFM 分层 + K-Means 聚类")
 
     df = st.session_state.get("df_orders")

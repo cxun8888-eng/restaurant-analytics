@@ -1,15 +1,10 @@
 """
 餐饮多平台经营数据分析系统
-Restaurant Multi-Platform Analytics
-
-作者：数据科学与大数据技术专业
-技术栈：Python + Streamlit + Pandas + Scikit-learn + Prophet + Plotly
-
-启动方式：streamlit run app.py
+技术栈：Python + Streamlit + Pandas + Scikit-learn + Plotly
 """
 
 import streamlit as st
-
+from src.style import apply_global_style, hero_banner, section_header, info_card
 
 st.set_page_config(
     page_title="餐饮多平台经营数据分析系统",
@@ -20,139 +15,135 @@ st.set_page_config(
 
 
 def main():
-    # ===== 侧边栏：系统信息 =====
+    apply_global_style()
+
+    # ===== 侧边栏 =====
     with st.sidebar:
-        st.title("🍜 餐饮分析系统")
-        st.markdown("---")
         st.markdown("""
-        ### 关于本项目
+        <div style="text-align: center; padding: 1rem 0;">
+            <div style="font-size: 2.5rem;">🍜</div>
+            <div style="font-weight: 700; font-size: 1.1rem; color: #1a1a2e;">餐饮分析系统</div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Restaurant Analytics</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        支持美团、微信点单、饿了么等多平台订单数据的自动清洗、多维度分析和智能决策建议。
+        st.markdown("---")
 
+        st.markdown("""
         ### 分析模块
-        1. **数据上传** — 数据管道与质量检查
-        2. **经营概览** — 核心指标与营收趋势
-        3. **商品分析** — 销量排行与关联规则
-        4. **用户分析** — RFM分层与聚类
-        5. **智能预测** — 营收预测与异常检测
-        6. **分析报告** — 一键诊断报告
-
-        ### 技术栈
-        - Python 网页框架 Streamlit
-        - Pandas + NumPy 数据处理
-        - Scikit-learn 机器学习
-        - Prophet 时序预测
-        - Plotly 交互式可视化
-        - mlxtend 关联规则挖掘
-
-        ### 使用流程
-        1. 上传 CSV/Excel 数据（或用模拟数据体验）
-        2. 依次浏览各分析页面
-        3. 在「分析报告」页生成完整报告
         """)
+        st.markdown("""
+        <div style="font-size: 0.88rem; line-height: 2.2;">
+        1.  &nbsp; 数据上传 — 数据管道与质量检查<br>
+        2.  &nbsp; 经营概览 — 核心指标与营收趋势<br>
+        3.  &nbsp; 商品分析 — 销量排行与关联规则<br>
+        4.  &nbsp; 用户分析 — RFM分层与聚类<br>
+        5.  &nbsp; 智能预测 — 营收预测与异常检测<br>
+        6.  &nbsp; 分析报告 — 一键诊断报告
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        st.markdown("""
+        ### 技术栈
+        <div style="font-size: 0.82rem; color: #6b7280;">
+        Streamlit · Pandas · NumPy · Scikit-learn<br>
+        Plotly · mlxtend · SciPy
+        </div>
+        """, unsafe_allow_html=True)
 
         st.divider()
         st.caption("数据科学与大数据技术 · 个人项目")
-        st.caption("展示从数据清洗到智能决策的全链路分析能力")
 
     # ===== 主页内容 =====
-    st.title("🍜 餐饮多平台经营数据分析系统")
+    hero_banner()
 
-    st.markdown("""
-    ### 从数据到决策：餐饮经营分析一站式平台
+    # ---- 三步流程 ----
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem;">📤</div>
+            <div style="font-weight: 600; margin: 0.5rem 0;">上传数据</div>
+            <div style="font-size: 0.85rem; color: #6b7280;">支持美团、饿了么、微信点单<br>导出的 CSV / Excel 文件</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem;">🔍</div>
+            <div style="font-weight: 600; margin: 0.5rem 0;">智能分析</div>
+            <div style="font-size: 0.85rem; color: #6b7280;">自动清洗 · 多维分析 · 算法建模<br>RFM分层 · 关联规则 · 营收预测</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 2rem;">📋</div>
+            <div style="font-weight: 600; margin: 0.5rem 0;">经营建议</div>
+            <div style="font-size: 0.85rem; color: #6b7280;">一键生成诊断报告<br>可执行的运营决策建议</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    商家从美团、微信小程序、饿了么导出订单数据 → 上传文件 → 自动完成：
-    数据清洗 → 特征建模 → 多维分析 → 可视化图表 → **智能经营建议**
-    """)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    st.divider()
-
-    # 三大亮点卡片
+    # ---- 三大亮点卡片 ----
+    section_header("核心能力", "")
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.markdown("""
-        ### 🔬 数据科学方法论
-
-        - **RFM 用户分层**（CRM经典模型）
-        - **Apriori 关联规则**（购物篮分析）
-        - **K-Means 聚类**（交叉验证）
-        - **Prophet 时序预测**（Meta 开源）
-        - **Isolation Forest**（异常检测）
-        """)
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔬</div>
+            <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 0.75rem;">数据科学方法论</div>
+            <div style="font-size: 0.85rem; color: #6b7280; line-height: 1.8;">
+            RFM 用户分层 · Apriori 关联规则<br>
+            K-Means 聚类 · 随机森林回归<br>
+            Isolation Forest 异常检测
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
-        ### 📊 全链路数据处理
-
-        - 多平台数据自动识别
-        - IQR 异常值检测
-        - 缺失值智能处理
-        - 特征工程（RFM/时段/品类）
-        - 数据质量报告
-        """)
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📊</div>
+            <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 0.75rem;">全链路数据处理</div>
+            <div style="font-size: 0.85rem; color: #6b7280; line-height: 1.8;">
+            多平台数据自动识别 · IQR 异常检测<br>
+            缺失值智能处理 · 数据质量报告<br>
+            特征工程（时段/品类/用户）
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
-        ### 💡 数据驱动决策
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">💡</div>
+            <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 0.75rem;">数据驱动决策</div>
+            <div style="font-size: 0.85rem; color: #6b7280; line-height: 1.8;">
+            自动经营诊断报告 · 套餐搭配建议<br>
+            用户分层运营策略 · 滞销品优化<br>
+            未来营收预测预警
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        - 自动生成经营诊断报告
-        - 套餐搭配智能建议
-        - 用户分层运营策略
-        - 滞销品优化建议
-        - 未来营收预测预警
-        """)
-
+    st.markdown("<br>", unsafe_allow_html=True)
     st.divider()
 
-    # 快速开始
+    # ---- 快速开始 ----
+    info_card("👈 从左侧导航选择「数据上传」开始体验，推荐使用模拟数据快速了解系统功能。")
+
+    # ---- 底部 ----
+    st.divider()
     st.markdown("""
-    ### 🚀 快速开始
-
-    👈 从左侧导航选择「**数据上传**」开始体验，推荐使用模拟数据快速了解系统功能。
-
-    ---
-
-    ### 💼 简历亮点
-
-    本项目展示了数据分析师/数据科学家的核心能力：
-
-    | 能力维度 | 具体体现 |
-    |---------|---------|
-    | **数据工程** | ETL管道设计、多源数据标准化、数据质量监控 |
-    | **特征工程** | RFM特征构造、时段特征衍生、one-hot编码 |
-    | **统计分析** | 描述统计五数、分布形态分析、偏差/峰度 |
-    | **数据挖掘** | Apriori关联规则（Support/Confidence/Lift） |
-    | **机器学习** | K-Means聚类、Isolation Forest异常检测 |
-    | **时序预测** | Prophet模型（趋势+周期+节假日分解） |
-    | **业务洞察** | RFM分层策略、关联套餐建议、自然语言报告生成 |
-    | **工程能力** | Streamlit全栈部署、模块化架构、可维护代码 |
-
-    ---
-
-    ### 📁 项目结构
-
-    ```
-    restaurant-analytics/
-    ├── app.py                     # 主入口
-    ├── pages/                     # Streamlit 页面
-    │   ├── 1_data_upload.py       # 数据上传 & ETL
-    │   ├── 2_overview.py          # 经营概览
-    │   ├── 3_product_analysis.py  # 商品分析
-    │   ├── 4_user_analysis.py     # 用户分析
-    │   ├── 5_prediction.py        # 智能预测
-    │   └── 6_report.py            # 分析报告
-    ├── src/                       # 核心逻辑（与页面解耦）
-    │   ├── data_pipeline.py       # ETL 数据管道
-    │   ├── features.py            # 特征工程
-    │   ├── models.py              # ML 模型
-    │   ├── analysis.py            # 统计分析
-    │   ├── visualization.py       # Plotly 图表工厂
-    │   └── report.py              # 报告生成
-    ├── sample_data/               # 模拟数据
-    └── notebooks/                 # 方法论文档
-    ```
-    """)
+    <div style="text-align: center; font-size: 0.8rem; color: #9ca3af; padding: 1rem 0;">
+    数据科学与大数据技术 · 个人项目 · 已部署至 Hugging Face Spaces
+    </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

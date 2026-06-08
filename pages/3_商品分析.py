@@ -11,6 +11,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from src.style import apply_global_style, section_header, info_card
 from src.analysis import compute_product_analysis
 from src.models import run_apriori
 from src.visualization import (
@@ -24,6 +25,7 @@ st.set_page_config(page_title="商品分析 | 餐饮数据分析", page_icon="�
 
 
 def main():
+    apply_global_style()
     st.title("🍳 商品分析")
 
     df = st.session_state.get("df_orders")
