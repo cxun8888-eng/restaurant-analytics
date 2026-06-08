@@ -10,7 +10,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.style import apply_global_style, page_title, section, quiet, spacer
+from src.style import apply_global_style
 from src.analysis import compute_overview_metrics, compute_product_analysis, compute_platform_comparison
 from src.report import generate_full_report
 

@@ -3,7 +3,6 @@
 """
 
 import streamlit as st
-from src.style import apply_global_style, page_title, section, quiet, spacer
 
 st.set_page_config(
     page_title="餐饮经营数据分析",
@@ -14,109 +13,65 @@ st.set_page_config(
 
 
 def main():
-    apply_global_style()
+    # ===== 全局样式 =====
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .main .block-container { padding-top: 0; max-width: 100%; }
 
-    # ===== 侧边栏 =====
-    with st.sidebar:
-        spacer(1)
-        st.markdown("### 餐饮分析")
+    /* 侧边栏 — 轻量化 */
+    [data-testid="stSidebar"] { background-color: #fafafa; }
+    [data-testid="stSidebarNavLink"] { font-size: 0.85rem !important; padding: 0.3rem 0.6rem !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-        st.markdown("""
-        <div style="font-size: 0.82rem; color: #999; line-height: 2;">
-        数据上传<br>
-        经营概览<br>
-        商品分析<br>
-        用户分析<br>
-        智能预测<br>
-        分析报告
+    # ===== 主体 Hero =====
+    st.markdown("""
+    <div style="padding: 6rem 3rem 4rem 3rem;">
+        <div style="max-width: 800px;">
+            <div style="font-size: 0.75rem; letter-spacing: 0.15em; color: #999; margin-bottom: 1.5rem;">
+                餐饮经营数据分析系统
+            </div>
+            <div style="font-size: 3.5rem; font-weight: 300; color: #111; line-height: 1.2; margin-bottom: 1.5rem;">
+                让每一份订单数据<br>产生真正的价值
+            </div>
+            <div style="font-size: 1.1rem; color: #888; font-weight: 300; max-width: 500px; line-height: 1.6;">
+                上传美团、饿了么、微信点单的 CSV 文件，自动完成清洗、分析、预测，输出经营建议。
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ===== 功能 — 横向大块 =====
+    features = [
+        ("01", "数据管道", "自动识别多平台表头，校验字段，处理缺失值，检测异常数据。"),
+        ("02", "多维分析", "营收趋势、时段分布、平台对比、商品排行、品类占比。"),
+        ("03", "算法建模", "RFM 用户分层、Apriori 关联规则、K-Means 聚类、随机森林预测。"),
+        ("04", "智能报告", "一键生成自然语言诊断报告，把数据变成可执行的经营建议。"),
+    ]
+
+    for num, title, desc in features:
+        st.markdown(f"""
+        <div style="padding: 2rem 3rem; border-top: 1px solid #f0f0f0;">
+            <div style="display: flex; align-items: flex-start; gap: 3rem; max-width: 1000px;">
+                <div style="font-size: 2rem; font-weight: 200; color: #ddd; min-width: 60px;">{num}</div>
+                <div>
+                    <div style="font-weight: 500; font-size: 1.2rem; color: #111; margin-bottom: 0.3rem;">{title}</div>
+                    <div style="color: #999; font-weight: 300;">{desc}</div>
+                </div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        spacer(2)
-        st.markdown("""
-        <div style="font-size: 0.75rem; color: #bbb; line-height: 1.6;">
-        Python · Streamlit<br>
-        Pandas · Scikit-learn<br>
-        Plotly
+    # ===== 底部 =====
+    st.markdown("""
+    <div style="padding: 4rem 3rem; border-top: 1px solid #f0f0f0; margin-top: 3rem;">
+        <div style="font-size: 0.8rem; color: #ccc;">
+            数据科学与大数据技术 · 个人项目
         </div>
-        """, unsafe_allow_html=True)
-
-    # ===== 主页 =====
-    page_title("餐饮经营数据分析")
-
-    quiet("上传美团、饿了么、微信点单的订单数据，自动完成清洗、分析与经营建议。")
-
-    spacer(3)
-
-    # ---- 三步 ----
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("""
-        <div style="font-size: 2rem; font-weight: 200; color: #ccc;">01</div>
-        <div style="font-weight: 500; margin: 0.3rem 0;">上传数据</div>
-        <div style="font-size: 0.82rem; color: #999;">支持 CSV / Excel 文件</div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div style="font-size: 2rem; font-weight: 200; color: #ccc;">02</div>
-        <div style="font-weight: 500; margin: 0.3rem 0;">自动分析</div>
-        <div style="font-size: 0.82rem; color: #999;">清洗 · 建模 · 可视化</div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-        <div style="font-size: 2rem; font-weight: 200; color: #ccc;">03</div>
-        <div style="font-weight: 500; margin: 0.3rem 0;">经营建议</div>
-        <div style="font-size: 0.82rem; color: #999;">一键生成诊断报告</div>
-        """, unsafe_allow_html=True)
-
-    spacer(3)
-    st.divider()
-
-    # ---- 能力 ----
-    section("核心能力")
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("""
-        <p style="font-weight: 500;">数据科学方法</p>
-        <p style="font-size: 0.85rem; color: #666; line-height: 1.8;">
-        RFM 用户分层<br>
-        Apriori 关联规则<br>
-        K-Means 聚类<br>
-        随机森林回归<br>
-        Isolation Forest
-        </p>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <p style="font-weight: 500;">数据处理链路</p>
-        <p style="font-size: 0.85rem; color: #666; line-height: 1.8;">
-        多平台数据识别<br>
-        IQR 异常检测<br>
-        缺失值智能处理<br>
-        特征工程<br>
-        数据质量报告
-        </p>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-        <p style="font-weight: 500;">业务决策输出</p>
-        <p style="font-size: 0.85rem; color: #666; line-height: 1.8;">
-        经营诊断报告<br>
-        套餐搭配建议<br>
-        用户运营策略<br>
-        滞销品优化<br>
-        营收预测预警
-        </p>
-        """, unsafe_allow_html=True)
-
-    spacer(2)
-    st.divider()
-    quiet("数据科学与大数据技术 · 个人项目")
+    </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
