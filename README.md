@@ -1,3 +1,13 @@
+---
+title: 餐饮数据分析系统
+emoji: 🍜
+colorFrom: indigo
+colorTo: green
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # 餐饮多平台经营数据分析系统
 
 数据科学与大数据技术专业 · 个人项目
