@@ -29,6 +29,34 @@ def apply_global_style():
         padding-top: 2rem;
     }
 
+    /* ===== 侧边栏导航 — 放大加粗 ===== */
+    [data-testid="stSidebarNav"] {
+        padding-top: 0.5rem;
+    }
+    [data-testid="stSidebarNavLink"] {
+        font-size: 1.05rem !important;
+        font-weight: 500 !important;
+        padding: 0.6rem 1rem !important;
+        border-radius: 8px !important;
+        margin: 2px 0 !important;
+        transition: all 0.15s;
+    }
+    [data-testid="stSidebarNavLink"]:hover {
+        background-color: #e5e7eb !important;
+    }
+    /* 当前激活的页面 */
+    [data-testid="stSidebarNavLink"][aria-current="page"] {
+        background-color: #d1fae5 !important;
+        color: #065f46 !important;
+        font-weight: 600 !important;
+    }
+
+    /* ===== 侧边栏标题（APP名）===== */
+    [data-testid="stSidebarNav"] > div:first-child {
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+    }
+
     /* ===== 标题样式 ===== */
     h1 {
         font-weight: 700 !important;
