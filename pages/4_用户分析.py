@@ -11,7 +11,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.style import apply_global_style, section_header, info_card
+from src.style import apply_global_style, page_title, section, quiet, spacer
 from src.features import build_rfm_features
 from src.models import run_kmeans_clustering, find_optimal_k
 from src.visualization import (

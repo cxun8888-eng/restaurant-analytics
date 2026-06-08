@@ -10,7 +10,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.style import apply_global_style, section_header, info_card
+from src.style import apply_global_style, page_title, section, quiet, spacer
 from src.analysis import (
     compute_overview_metrics,
     compute_trend_analysis,

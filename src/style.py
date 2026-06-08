@@ -1,213 +1,142 @@
-"""全局样式注入 — 清爽商务风"""
+"""全局样式 — 极简白"""
 
 import streamlit as st
 
 
 def apply_global_style():
-    """注入全局 CSS"""
     st.markdown("""
     <style>
-    /* ===== 字体 ===== */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Inter', -apple-system, sans-serif;
+        font-weight: 400;
     }
 
-    /* ===== 主容器 ===== */
+    /* ===== 去掉所有默认装饰 ===== */
     .main .block-container {
-        padding-top: 2rem;
-        max-width: 1200px;
+        padding-top: 1.5rem;
+        max-width: 1100px;
     }
 
-    /* ===== 侧边栏 ===== */
+    /* ===== 侧边栏 — 干净 ===== */
     [data-testid="stSidebar"] {
-        background-color: #f8f9fa;
-        border-right: 1px solid #e5e7eb;
-    }
-    [data-testid="stSidebar"] .block-container {
-        padding-top: 2rem;
-    }
-
-    /* ===== 侧边栏导航 — 放大加粗 ===== */
-    [data-testid="stSidebarNav"] {
-        padding-top: 0.5rem;
+        background-color: #fafafa;
     }
     [data-testid="stSidebarNavLink"] {
-        font-size: 1.05rem !important;
-        font-weight: 500 !important;
-        padding: 0.6rem 1rem !important;
-        border-radius: 8px !important;
-        margin: 2px 0 !important;
-        transition: all 0.15s;
+        font-size: 0.95rem !important;
+        font-weight: 400 !important;
+        padding: 0.45rem 0.8rem !important;
+        border-radius: 6px !important;
     }
-    [data-testid="stSidebarNavLink"]:hover {
-        background-color: #e5e7eb !important;
-    }
-    /* 当前激活的页面 */
     [data-testid="stSidebarNavLink"][aria-current="page"] {
-        background-color: #d1fae5 !important;
-        color: #065f46 !important;
-        font-weight: 600 !important;
+        background-color: #f0f0f0 !important;
+        font-weight: 500 !important;
     }
 
-    /* ===== 侧边栏标题（APP名）===== */
-    [data-testid="stSidebarNav"] > div:first-child {
-        font-size: 1.2rem !important;
-        font-weight: 700 !important;
-    }
-
-    /* ===== 标题样式 ===== */
+    /* ===== 标题 ===== */
     h1 {
-        font-weight: 700 !important;
-        color: #1a1a2e !important;
-        letter-spacing: -0.02em;
+        font-weight: 300 !important;
+        font-size: 2.2rem !important;
+        letter-spacing: -0.03em;
+        color: #111 !important;
     }
     h2 {
-        font-weight: 600 !important;
-        color: #1a1a2e !important;
+        font-weight: 400 !important;
+        font-size: 1.4rem !important;
+        color: #111 !important;
     }
     h3 {
-        font-weight: 600 !important;
-        color: #374151 !important;
+        font-weight: 500 !important;
+        font-size: 1.1rem !important;
+        color: #333 !important;
     }
 
-    /* ===== 度量卡片 ===== */
+    /* ===== 度量卡 — 无边框大数字 ===== */
     [data-testid="stMetric"] {
-        background: white;
-        padding: 1.25rem;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        transition: box-shadow 0.2s;
-    }
-    [data-testid="stMetric"]:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        background: none;
+        padding: 0.5rem 0;
     }
     [data-testid="stMetric"] label {
-        color: #6b7280 !important;
-        font-size: 0.8rem !important;
-        font-weight: 500 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        color: #999 !important;
+        font-size: 0.75rem !important;
+        font-weight: 400 !important;
+        letter-spacing: 0.06em;
     }
     [data-testid="stMetric"] [data-testid="stMetricValue"] {
-        color: #1a1a2e !important;
-        font-weight: 700 !important;
-        font-size: 1.75rem !important;
+        font-weight: 300 !important;
+        font-size: 2.2rem !important;
+        color: #111 !important;
     }
 
     /* ===== 按钮 ===== */
     .stButton > button {
-        border-radius: 8px;
-        font-weight: 500;
-        padding: 0.5rem 1.5rem;
-        transition: all 0.2s;
+        border-radius: 6px;
+        font-weight: 400;
+        padding: 0.4rem 1.2rem;
+        border: 1px solid #ddd;
+        background: white;
+        color: #333;
     }
     .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        border-color: #111;
+        color: #111;
     }
 
-    /* ===== 数据表格 ===== */
+    /* ===== 表格 — 极简线条 ===== */
     [data-testid="stDataFrame"] {
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
+        border: none;
     }
 
     /* ===== 展开区域 ===== */
     .streamlit-expanderHeader {
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-    }
-
-    /* ===== 信息/警告框 ===== */
-    .stAlert {
-        border-radius: 10px;
         border: none;
+        background: #fafafa;
+        border-radius: 0;
+        font-weight: 400;
     }
 
-    /* ===== 分割线 ===== */
+    /* ===== 信息提示 ===== */
+    .stAlert {
+        border-radius: 0;
+        border: none;
+        border-left: 2px solid #ddd;
+    }
+
+    /* ===== 分割线 — 淡 ===== */
     hr {
-        border-color: #e5e7eb;
-        margin: 1.5rem 0;
-    }
-
-    /* ===== 图表容器 ===== */
-    .stPlotlyChart {
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-        padding: 0.5rem;
-        background: white;
+        border-color: #eee;
+        margin: 2rem 0;
     }
     </style>
     """, unsafe_allow_html=True)
 
 
-def hero_banner():
-    """首页 Hero 区域"""
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #f8f9fa 100%);
-        border-radius: 16px;
-        padding: 2.5rem 2rem;
-        margin-bottom: 2rem;
-        border: 1px solid #d1fae5;
-        text-align: center;
-    ">
-        <h1 style="
-            color: #065f46;
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.03em;
-        ">餐饮多平台经营数据分析系统</h1>
-        <p style="
-            color: #6b7280;
-            font-size: 1.05rem;
-            margin-bottom: 0;
-        ">上传订单 CSV → 自动清洗分析 → 智能经营建议 · 全链路数据闭环</p>
+def page_title(text):
+    """大标题"""
+    st.markdown(f"""
+    <div style="margin: 1.5rem 0 2rem 0;">
+        <h1 style="font-weight: 300; font-size: 2rem; margin: 0; color: #111;">{text}</h1>
     </div>
     """, unsafe_allow_html=True)
 
 
-def section_header(title, icon=""):
-    """统一的分区标题"""
+def section(text):
+    """章节标题"""
     st.markdown(f"""
-    <div style="
-        border-bottom: 2px solid #10B981;
-        padding-bottom: 0.5rem;
-        margin: 1.5rem 0 1rem 0;
-    ">
-        <h3 style="color: #1a1a2e; font-weight: 600; margin: 0;">{icon} {title}</h3>
+    <div style="margin: 2rem 0 1rem 0;">
+        <span style="font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; color: #999; text-transform: uppercase;">{text}</span>
     </div>
     """, unsafe_allow_html=True)
 
 
-def info_card(text):
-    """信息提示卡片"""
+def quiet(text):
+    """灰色小字"""
     st.markdown(f"""
-    <div style="
-        background: #f0fdf4;
-        border-left: 4px solid #10B981;
-        border-radius: 8px;
-        padding: 1rem 1.25rem;
-        margin: 1rem 0;
-        color: #065f46;
-    ">{text}</div>
+    <p style="color: #999; font-size: 0.85rem; font-weight: 300;">{text}</p>
     """, unsafe_allow_html=True)
 
 
-def tip_card(text):
-    """提示卡片（灰色）"""
-    st.markdown(f"""
-    <div style="
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-        margin: 1rem 0;
-        color: #6b7280;
-        font-size: 0.9rem;
-    ">{text}</div>
-    """, unsafe_allow_html=True)
+def spacer(height=2):
+    """留白"""
+    st.markdown(f'<div style="height: {height}rem;"></div>', unsafe_allow_html=True)
