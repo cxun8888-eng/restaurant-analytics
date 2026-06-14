@@ -11,9 +11,11 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.style import apply_global_style
+from src.nav_style import inject_nav_css
 from src.features import build_rfm_features
+from src.nav_style import inject_nav_css
 from src.models import run_kmeans_clustering, find_optimal_k
+from src.nav_style import inject_nav_css
 from src.visualization import (
     rfm_scatter_3d,
     rfm_segment_bar,
@@ -25,7 +27,7 @@ st.set_page_config(page_title="用户分析 | 餐饮数据分析", page_icon="�
 
 
 def main():
-    apply_global_style()
+    inject_nav_css()
     st.title("👤 用户分析 — RFM 分层 + K-Means 聚类")
 
     df = st.session_state.get("df_orders")

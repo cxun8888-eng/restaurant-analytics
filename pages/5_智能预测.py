@@ -11,9 +11,11 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.style import apply_global_style
+from src.nav_style import inject_nav_css
 from src.models import run_isolation_forest
+from src.nav_style import inject_nav_css
 from src.analysis import compute_trend_analysis
+from src.nav_style import inject_nav_css
 from src.visualization import forecast_chart
 
 
@@ -150,7 +152,7 @@ def _forecast_revenue(daily_df: pd.DataFrame, forecast_days: int = 14):
 
 
 def main():
-    apply_global_style()
+    inject_nav_css()
     st.title("🔮 智能预测 & 异常检测")
 
     df = st.session_state.get("df_orders")

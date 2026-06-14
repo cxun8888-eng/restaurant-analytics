@@ -83,9 +83,9 @@ def product_ranking_chart(product_df: pd.DataFrame, top_n: int = 15) -> go.Figur
         x=df["total_sold"],
         orientation="h",
         marker=dict(
-            color=df["total_revenue"],
-            colorscale="Bluered",
-            colorbar=dict(title="营收(¥)"),
+            color=df["total_sold"],
+            colorscale="blues",
+            showscale=False,
         ),
         text=df["total_sold"].apply(lambda x: f"{x}份"),
         textposition="outside",
@@ -115,8 +115,20 @@ def category_pie_chart(category_df: pd.DataFrame) -> go.Figure:
 
     fig.update_layout(
         title="品类营收占比",
-        height=CHART_HEIGHT,
-        margin=dict(l=20, r=20, t=40, b=20),
+        height=450,
+        margin=dict(l=20, r=120, t=40, b=20),
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=1.05,
+        ),
+    )
+    fig.update_traces(
+        textposition="inside",
+        textinfo="percent",
     )
     return fig
 

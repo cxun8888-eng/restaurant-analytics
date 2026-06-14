@@ -10,13 +10,15 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.style import apply_global_style
+from src.nav_style import inject_nav_css
 from src.analysis import (
     compute_overview_metrics,
     compute_trend_analysis,
     compute_platform_comparison,
 )
+from src.nav_style import inject_nav_css
 from src.features import build_hourly_heatmap
+from src.nav_style import inject_nav_css
 from src.visualization import (
     revenue_trend_chart,
     hourly_heatmap_chart,
@@ -28,7 +30,7 @@ st.set_page_config(page_title="经营概览 | 餐饮数据分析", page_icon="�
 
 
 def main():
-    apply_global_style()
+    inject_nav_css()
     st.title("📊 经营概览")
 
     df = st.session_state.get("df_orders")
