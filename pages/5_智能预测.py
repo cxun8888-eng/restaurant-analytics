@@ -301,7 +301,7 @@ def main():
     )
 
     # ===== 面试要点 =====
-    with st.expander("📝 预测 & 异常检测面试讲解要点", expanded=False):
+    with st.expander("📝 预测 & 异常检测解读标准模板", expanded=False):
         st.markdown("""
         ### 随机森林时间序列预测
 

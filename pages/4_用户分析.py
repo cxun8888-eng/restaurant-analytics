@@ -179,7 +179,7 @@ def main():
     st.plotly_chart(fig_3d, use_container_width=True)
 
     # ===== 讲解要点 =====
-    with st.expander("📝 RFM + K-Means 算法讲解要点", expanded=False):
+    with st.expander("📝 RFM + K-Means 解读标准模板", expanded=False):
         st.markdown(f"""
         ### 如何讲清楚这个模块？
 

@@ -164,7 +164,7 @@ def main():
         st.info("商品数量过少，无法划分滞销品")
 
     # ===== 面试要点 =====
-    with st.expander("📝 Apriori 算法讲解要点", expanded=False):
+    with st.expander("📝 Apriori 关联规则解读标准模板", expanded=False):
         st.markdown("""
         ### 如何讲清楚这个模块？
 
