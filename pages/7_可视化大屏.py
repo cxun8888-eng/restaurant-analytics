@@ -73,7 +73,31 @@ GUIDES = {
 
 def main():
     inject_nav_css()
-    st.title("📺 可视化大屏")
+
+    # ===== 导出按钮 + 打印样式 =====
+    col_title, col_btn = st.columns([10, 1])
+    with col_title:
+        st.title("📺 可视化大屏")
+    with col_btn:
+        st.markdown("""
+        <style>
+        @media print {
+            [data-testid="stSidebar"] { display: none !important; }
+            header { display: none !important; }
+            footer { display: none !important; }
+            .stButton { display: none !important; }
+            [data-testid="stPopover"] { display: none !important; }
+            [data-testid="stExpander"] { display: none !important; }
+            .main .block-container { padding: 0 !important; max-width: 100% !important; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        </style>
+        <button onclick="window.print()" style="
+            background: #1a1a2e; color: white; border: none;
+            padding: 0.5rem 1.2rem; border-radius: 8px;
+            font-size: 0.9rem; cursor: pointer; margin-top: 1rem;
+        ">🖨 导出大屏</button>
+        """, unsafe_allow_html=True)
 
     df = st.session_state.get("df_orders")
     if df is None:
