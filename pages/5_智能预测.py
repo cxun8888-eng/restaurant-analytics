@@ -274,15 +274,17 @@ def main():
 
     n_anomalies = anomaly_df["is_anomaly"].sum()
     n_total = len(anomaly_df)
+    avg_score = anomaly_df[anomaly_df["is_anomaly"]]["anomaly_score"].mean()
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("总订单数", f"{n_total:,}")
-    with col2:
-        st.metric("异常订单", f"{n_anomalies}", delta=f"{n_anomalies/n_total*100:.1f}%")
-    with col3:
-        avg_score = anomaly_df[anomaly_df["is_anomaly"]]["anomaly_score"].mean()
-        st.metric("平均异常分数", f"{avg_score:.3f}")
+    with st.container(border=True):
+        st.markdown("**Isolation Forest 检测结果**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("总订单数", f"{n_total:,}")
+        with col2:
+            st.metric("异常订单", f"{n_anomalies}", delta=f"{n_anomalies/n_total*100:.1f}%")
+        with col3:
+            st.metric("平均异常分数", f"{avg_score:.3f}")
 
     # 异常订单详情
     st.subheader("异常订单明细")
