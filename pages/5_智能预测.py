@@ -245,16 +245,27 @@ def main():
     next_7 = forecast_result.head(7)
     total_pred_7 = next_7["predicted"].sum()
     avg_pred_7 = next_7["predicted"].mean()
+    first_val = next_7["predicted"].iloc[0]
+    last_val = next_7["predicted"].iloc[-1]
+    trend_pct = (last_val - first_val) / first_val * 100
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    days_label = f"📈 未来 {forecast_days} 天营收预测摘要"
+    pc = st.container(border=True)
+    pc.markdown(f"""
+    <div style="
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #1e40af;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.5rem;
+    ">{days_label}</div>
+    """, unsafe_allow_html=True)
+    pc1, pc2, pc3 = pc.columns(3)
+    with pc1:
         st.metric("未来7天预测总营收", f"¥{total_pred_7:,.0f}")
-    with col2:
+    with pc2:
         st.metric("预测日均营收", f"¥{avg_pred_7:,.0f}")
-    with col3:
-        first_val = next_7["predicted"].iloc[0]
-        last_val = next_7["predicted"].iloc[-1]
-        trend_pct = (last_val - first_val) / first_val * 100
+    with pc3:
         st.metric("7日趋势", f"{trend_pct:+.1f}%")
 
     st.divider()
@@ -276,15 +287,23 @@ def main():
     n_total = len(anomaly_df)
     avg_score = anomaly_df[anomaly_df["is_anomaly"]]["anomaly_score"].mean()
 
-    with st.container(border=True):
-        st.markdown("**Isolation Forest 检测结果**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("总订单数", f"{n_total:,}")
-        with col2:
-            st.metric("异常订单", f"{n_anomalies}", delta=f"{n_anomalies/n_total*100:.1f}%")
-        with col3:
-            st.metric("平均异常分数", f"{avg_score:.3f}")
+    c = st.container(border=True)
+    c.markdown("""
+    <div style="
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #991b1b;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.5rem;
+    ">🔍 Isolation Forest 异常检测结果</div>
+    """, unsafe_allow_html=True)
+    cc1, cc2, cc3 = c.columns(3)
+    with cc1:
+        st.metric("总订单数", f"{n_total:,}")
+    with cc2:
+        st.metric("异常订单", f"{n_anomalies}", delta=f"{n_anomalies/n_total*100:.1f}%")
+    with cc3:
+        st.metric("平均异常分数", f"{avg_score:.3f}")
 
     # 异常订单详情
     st.subheader("异常订单明细")
