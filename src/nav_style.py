@@ -91,8 +91,10 @@ def inject_nav_css():
                 // 左侧色条
                 el.style.borderLeftColor = c.border;
 
-                // 激活状态背景色
+                // 始终显示底色（激活时加深）
                 if (el.getAttribute('aria-current') === 'page') {
+                    el.style.backgroundColor = c.border + '22';
+                } else {
                     el.style.backgroundColor = c.bg;
                 }
             });
