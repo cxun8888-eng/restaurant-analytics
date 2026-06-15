@@ -79,6 +79,7 @@ def main():
     with col_title:
         st.title("📺 可视化大屏")
     with col_btn:
+        # 打印样式
         st.markdown("""
         <style>
         @media print {
@@ -92,12 +93,16 @@ def main():
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         </style>
+        """, unsafe_allow_html=True)
+        # 按钮用 components.html 注入，onclick 不会被过滤
+        import streamlit.components.v1 as components
+        components.html("""
         <button onclick="window.print()" style="
             background: #1a1a2e; color: white; border: none;
-            padding: 0.5rem 1.2rem; border-radius: 8px;
-            font-size: 0.9rem; cursor: pointer; margin-top: 1rem;
+            padding: 0.6rem 1.5rem; border-radius: 8px;
+            font-size: 0.95rem; cursor: pointer; margin-top: 1.2rem;
         ">🖨 导出大屏</button>
-        """, unsafe_allow_html=True)
+        """, height=50)
 
     df = st.session_state.get("df_orders")
     if df is None:
