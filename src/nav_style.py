@@ -1,9 +1,11 @@
 """侧边栏导航样式 + 标题层级 — 统一注入"""
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def inject_nav_css():
+    # ===== CSS 部分 =====
     st.markdown("""
     <style>
     [data-testid="stSidebar"] {
@@ -21,10 +23,8 @@ def inject_nav_css():
         transition: all 0.15s !important;
     }
     [data-testid="stSidebarNavLink"]:hover {
-        background-color: #f5f5f5 !important;
+        filter: brightness(0.95) !important;
     }
-
-    /* 当前激活页 */
     [data-testid="stSidebarNavLink"][aria-current="page"] {
         font-weight: 700 !important;
         font-size: 2.4rem !important;
@@ -62,18 +62,21 @@ def inject_nav_css():
         color: #9ca3af !important;
     }
     </style>
+    """, unsafe_allow_html=True)
 
+    # ===== JS 部分（用 components.html 注入，不会被过滤） =====
+    components.html("""
     <script>
     (function() {
         const COLORS = {
-            'app':        { border: '#3b82f6', bg: '#eff6ff' },  // 蓝色
+            'app':        { border: '#3b82f6', bg: '#eff6ff' },
             '首页':        { border: '#3b82f6', bg: '#eff6ff' },
-            '数据上传与分析报告': { border: '#10b981', bg: '#ecfdf5' },  // 绿色
-            '运营分析':     { border: '#f59e0b', bg: '#fffbeb' },  // 琥珀色
-            '商品分析':     { border: '#8b5cf6', bg: '#f5f3ff' },  // 紫色
-            '用户分析':     { border: '#ec4899', bg: '#fdf2f8' },  // 粉色
-            '智能预测':     { border: '#06b6d4', bg: '#ecfeff' },  // 青色
-            '可视化大屏':   { border: '#f97316', bg: '#fff7ed' },  // 橙色
+            '数据上传与分析报告': { border: '#10b981', bg: '#ecfdf5' },
+            '运营分析':     { border: '#f59e0b', bg: '#fffbeb' },
+            '商品分析':     { border: '#8b5cf6', bg: '#f5f3ff' },
+            '用户分析':     { border: '#ec4899', bg: '#fdf2f8' },
+            '智能预测':     { border: '#06b6d4', bg: '#ecfeff' },
+            '可视化大屏':   { border: '#f97316', bg: '#fff7ed' },
         };
 
         function colorize() {
@@ -82,16 +85,13 @@ def inject_nav_css():
                 const c = COLORS[text];
                 if (!c) return;
 
-                // 改 "app" → "首页"
                 if (text === 'app') {
                     const span = el.querySelector('span');
                     if (span) span.textContent = '首页';
                 }
 
-                // 左侧色条
                 el.style.borderLeftColor = c.border;
 
-                // 始终显示底色（激活时加深）
                 if (el.getAttribute('aria-current') === 'page') {
                     el.style.backgroundColor = c.border + '22';
                 } else {
@@ -101,7 +101,7 @@ def inject_nav_css():
         }
 
         colorize();
-        new MutationObserver(colorize).observe(document.body, { childList: true, subtree: true });
+        setInterval(colorize, 500);
     })();
     </script>
-    """, unsafe_allow_html=True)
+    """, height=0, scrolling=False)
