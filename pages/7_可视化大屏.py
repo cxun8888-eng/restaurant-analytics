@@ -74,46 +74,7 @@ GUIDES = {
 def main():
     inject_nav_css()
 
-    # ===== 导出按钮 + 打印样式 =====
-    col_title, col_btn = st.columns([10, 1])
-    with col_title:
-        st.title("📺 可视化大屏")
-    with col_btn:
-        # 打印样式
-        st.markdown("""
-        <style>
-        @media print {
-            @page { size: A3 landscape; margin: 0.5cm; }
-            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-            [data-testid="stSidebar"],
-            header, footer,
-            [data-testid="stToolbar"],
-            .stDeployButton,
-            [data-testid="baseButton-header"],
-            [data-testid="baseButton-headerNoPadding"] { display: none !important; }
-
-            .main .block-container { padding: 0 !important; max-width: 100% !important; }
-
-            /* 图表 iframe 打印时可见 */
-            iframe { display: block !important; visibility: visible !important; opacity: 1 !important; }
-
-            /* 让内容自适应 */
-            .stPlotlyChart { break-inside: avoid; }
-            [data-testid="stMetric"] { break-inside: avoid; }
-            h2, h3 { break-after: avoid; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        # 按钮用 components.html 注入，onclick 不会被过滤
-        import streamlit.components.v1 as components
-        components.html("""
-        <button onclick="window.print()" style="
-            background: #1a1a2e; color: white; border: none;
-            padding: 0.6rem 1.5rem; border-radius: 8px;
-            font-size: 0.95rem; cursor: pointer; margin-top: 1.2rem;
-        ">🖨 导出大屏</button>
-        """, height=50)
+    st.title("📺 可视化大屏")
 
     df = st.session_state.get("df_orders")
     if df is None:
@@ -251,6 +212,56 @@ def main():
             st.plotly_chart(fig_seg, use_container_width=True)
 
     st.divider()
+
+    # ===== 导出大屏为 HTML 文件 =====
+    st.subheader("📥 导出大屏")
+    if st.button("生成大屏HTML文件", type="primary"):
+        import plotly.io as pio
+        from io import BytesIO
+
+        # 收集当前页面所有图表
+        all_figs = [fig_trend, fig_heat, fig_plat, fig_rank, fig_pie, fig_seg]
+
+        # 构建完整 HTML
+        html_parts = ["""
+        <!DOCTYPE html>
+        <html><head><meta charset="utf-8">
+        <title>可视化大屏</title>
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <style>
+            body { font-family: 'Microsoft YaHei', sans-serif; background: #f8f9fa; padding: 20px; }
+            h1 { text-align: center; color: #1a1a2e; margin-bottom: 0; }
+            .sub { text-align: center; color: #6b7280; margin-bottom: 30px; }
+            .row { display: flex; gap: 20px; margin-bottom: 20px; }
+            .col { flex: 1; }
+            .full { margin-bottom: 20px; }
+        </style></head><body>
+        <h1>餐饮经营数据可视化大屏</h1>
+        <p class="sub">数据科学与大数据技术 · 自动生成</p>
+        """, """
+        <div class="full">""", pio.to_html(all_figs[0], include_plotlyjs=False, full_html=False), """</div>
+        <div class="row">
+            <div class="col">""", pio.to_html(all_figs[1], include_plotlyjs=False, full_html=False), """</div>
+            <div class="col">""", pio.to_html(all_figs[2], include_plotlyjs=False, full_html=False), """</div>
+        </div>
+        <div class="full">""", pio.to_html(all_figs[3], include_plotlyjs=False, full_html=False), """</div>
+        <div class="row">
+            <div class="col">""", pio.to_html(all_figs[4], include_plotlyjs=False, full_html=False), """</div>
+            <div class="col">""", pio.to_html(all_figs[5], include_plotlyjs=False, full_html=False), """</div>
+        </div>
+        </body></html>"""]
+
+        full_html = "\n".join(html_parts)
+        buf = BytesIO(full_html.encode("utf-8"))
+
+        st.success("大屏 HTML 文件已生成，点击下方按钮下载后用浏览器打开即可查看完整大屏。")
+        st.download_button(
+            label="📥 下载大屏HTML文件",
+            data=buf,
+            file_name="可视化大屏.html",
+            mime="text/html",
+        )
+
     st.caption("数据科学与大数据技术 · 可视化大屏")
 
 
