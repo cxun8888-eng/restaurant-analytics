@@ -40,13 +40,37 @@ def main():
     slow_movers = product_data["slow_movers"]
 
     # ===== 销量排行 =====
-    st.subheader("🔥 商品销量排行")
+    col_t, col_b = st.columns([10, 1])
+    with col_t:
+        st.subheader("🔥 商品销量排行")
+    with col_b:
+        with st.popover("📖 解读"):
+            st.markdown("""
+            **怎么看这张图？**
+            - **横条越长**，说明销量越高
+            - **颜色越深**，说明销量越大（蓝色渐变）
+            - 只看 Top N 就能快速识别爆款和滞销品
+            - **用途**：决定菜单调整、备货优先级、促销选品
+            """)
+
     top_n = st.slider("显示 Top N", 5, 30, 15, key="top_n_slider")
     fig_rank = product_ranking_chart(ranking, top_n=top_n)
     st.plotly_chart(fig_rank, use_container_width=True)
 
     # ===== 品类营收占比 =====
-    st.subheader("🥧 品类营收占比")
+    col_t, col_b = st.columns([10, 1])
+    with col_t:
+        st.subheader("🥧 品类营收占比")
+    with col_b:
+        with st.popover("📖 解读"):
+            st.markdown("""
+            **怎么看这张图？**
+            - **每个扇区**代表一个品类的营收占比
+            - **扇区越大**，这个品类对营收的贡献越大
+            - **右侧图例**显示了每个品类名称
+            - **用途**：判断"靠什么赚钱"，指导菜单定价和品类扩张方向
+            """)
+
     if not categories.empty:
         fig_pie = category_pie_chart(categories)
         st.plotly_chart(fig_pie, use_container_width=True)
@@ -89,6 +113,7 @@ def main():
         st.success(f"发现 {n_rules} 条关联规则，其中 {high_lift} 条提升度 >= 2（强关联）")
 
         # 规则表
+        st.caption("表：Apriori 关联规则明细")
         st.dataframe(
             assoc_rules.style.background_gradient(subset=["lift"], cmap="YlOrRd"),
             use_container_width=True,
@@ -102,7 +127,20 @@ def main():
         )
 
         # 气泡图
-        st.subheader("关联规则可视化")
+        col_t, col_b = st.columns([10, 1])
+        with col_t:
+            st.subheader("关联规则可视化")
+        with col_b:
+            with st.popover("📖 解读"):
+                st.markdown("""
+                **怎么看这张图？**
+                - **每个气泡**代表一条关联规则（如"酸辣土豆丝 → 可乐"）
+                - **横轴（支持度）**：越靠右，这个组合出现得越频繁
+                - **纵轴（置信度）**：越靠上，买了A再买B的概率越高
+                - **气泡大小**：代表提升度（Lift），越大说明关联越强
+                - 关注**右上角的大气泡**，那是最佳套餐候选
+                """)
+
         fig_assoc = association_chart(assoc_rules)
         st.plotly_chart(fig_assoc, use_container_width=True)
     else:
@@ -112,6 +150,7 @@ def main():
 
     # ===== 滞销品 =====
     st.subheader("📉 滞销品关注")
+    st.caption("表：销量末尾 20% 的滞销商品")
     if not slow_movers.empty:
         cols = st.columns(len(slow_movers))
         for i, (_, row) in enumerate(slow_movers.iterrows()):
@@ -125,7 +164,7 @@ def main():
         st.info("商品数量过少，无法划分滞销品")
 
     # ===== 面试要点 =====
-    with st.expander("📝 Apriori 算法面试讲解要点", expanded=False):
+    with st.expander("📝 Apriori 算法讲解要点", expanded=False):
         st.markdown("""
         ### 如何讲清楚这个模块？
 

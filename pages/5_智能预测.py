@@ -185,11 +185,22 @@ def main():
             st.caption(f"平均绝对百分比误差（MAPE）：{forecast_meta['mape']:.2f}%（越小越准）")
 
     # 预测图
+    st.subheader("预测图表")
+    with st.popover("📖 解读"):
+        st.markdown("""
+        **怎么看这张图？**
+        - **紫色实线**：模型预测的未来营收值
+        - **紫色半透明区域**：95% 置信区间——真实营收有 95% 的概率落在这个范围内
+        - **灰色虚线**：历史实际营收（如果有显示）
+        - **区间越宽**，说明预测的不确定性越大
+        - **用途**：预测值做备货基准，上界做安全库存，下界做最坏打算
+        """)
     fig_fc = forecast_chart(forecast_result, historical_df=daily_df.tail(30))
     st.plotly_chart(fig_fc, use_container_width=True)
 
     # 预测数据表
     with st.expander("📋 预测数据明细", expanded=False):
+        st.caption("表：未来营收预测明细")
         st.dataframe(
             forecast_result.style.background_gradient(subset=["predicted"], cmap="Blues"),
             use_container_width=True,
@@ -246,6 +257,7 @@ def main():
 
     # 异常订单详情
     st.subheader("异常订单明细")
+    st.caption("表：Isolation Forest 检测出的异常订单（按异常分数排序）")
     anomalous = anomaly_df[anomaly_df["is_anomaly"]].sort_values("anomaly_score")
     st.dataframe(
         anomalous.head(20),

@@ -117,9 +117,11 @@ def main():
     tab1, tab2, tab3 = st.tabs(["数据样例", "统计摘要", "字段说明"])
 
     with tab1:
+        st.caption("表：清洗后的订单数据样例（前50行）")
         st.dataframe(df.head(50), use_container_width=True, height=300)
 
     with tab2:
+        st.caption("表：各字段统计摘要（数据类型、缺失值、唯一值）")
         st.dataframe(summarize_dataframe(df), use_container_width=True)
 
     with tab3:

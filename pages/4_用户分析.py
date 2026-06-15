@@ -13,9 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.nav_style import inject_nav_css
 from src.features import build_rfm_features
-from src.nav_style import inject_nav_css
 from src.models import run_kmeans_clustering, find_optimal_k
-from src.nav_style import inject_nav_css
 from src.visualization import (
     rfm_scatter_3d,
     rfm_segment_bar,
@@ -35,7 +33,6 @@ def main():
         st.warning("请先在「数据上传」页面加载数据")
         return
 
-    # ===== RFM 特征构建 =====
     with st.spinner("正在构建 RFM 特征..."):
         rfm_df = build_rfm_features(df)
 
@@ -59,7 +56,18 @@ def main():
 
     # ===== 用户分层 =====
     st.divider()
-    st.subheader("👥 用户分层（RFM 规则分层）")
+    col_t, col_b = st.columns([10, 1])
+    with col_t:
+        st.subheader("👥 用户分层（RFM 规则分层）")
+    with col_b:
+        with st.popover("📖 解读"):
+            st.markdown("""
+            **怎么看这张图？**
+            - **每一条**代表一种用户类型，按用户数从多到少排列
+            - **横条越长**，这类用户数量越多，是主要的用户群体
+            - **重点关注**："重要挽留"和"流失高价值"——人数不多但消费潜力大
+            - **用途**：决定营销资源分配，优先召回高价值流失用户
+            """)
 
     st.markdown("""
     > **分层逻辑**：对每个用户从 R（最近消费距今）、F（消费频次）、M（消费金额）三个维度打分（1-3），
@@ -79,6 +87,7 @@ def main():
             平均消费频次=("frequency", "mean"),
             平均消费金额=("monetary", "mean"),
         ).round(1)
+        st.caption("表：RFM 分层用户统计")
         st.dataframe(seg_summary, use_container_width=True)
 
     # ===== 策略展开 =====
@@ -98,24 +107,35 @@ def main():
     """)
 
     # 肘部法则
-    st.subheader("📐 肘部法则 — 选择最优 K 值")
+    col_t, col_b = st.columns([10, 1])
+    with col_t:
+        st.subheader("📐 肘部法则 — 选择最优 K 值")
+    with col_b:
+        with st.popover("📖 解读"):
+            st.markdown("""
+            **怎么看这张图？**
+            - **横轴**是不同的 K 值（聚类数），**纵轴**是 SSE（簇内误差平方和）
+            - **曲线越陡**，增加 K 值带来的改善越大
+            - **拐点（"肘部"）**所在位置就是最佳 K 值——之后再增加 K 收益递减
+            - 上图中拐点约在 K=4 处，说明分成 4 类最合适
+            """)
+
     elbow_df = find_optimal_k(rfm_df)
     fig_elbow = elbow_curve_chart(elbow_df)
     st.plotly_chart(fig_elbow, use_container_width=True)
 
-    # K-Means 参数
     k = st.slider("选择聚类数 K", 2, 8, 4, key="k_slider")
 
     with st.spinner(f"正在执行 K-Means (k={k})..."):
         rfm_clustered, cluster_info = run_kmeans_clustering(rfm_df, n_clusters=k)
 
-    # 聚类结果
     st.subheader(f"聚类结果（K={k}）")
     st.caption(f"聚类误差平方和(SSE): {cluster_info['inertia']} | 越小表示聚类越紧凑")
 
     col1, col2 = st.columns(2)
 
     with col1:
+        st.caption("表：K-Means 聚类中心与画像")
         st.dataframe(
             cluster_info["centers"],
             use_container_width=True,
@@ -129,23 +149,37 @@ def main():
         )
 
     with col2:
-        # 交叉对比：RFM 分段 vs K-Means 聚类
         cross = pd.crosstab(
             rfm_clustered["segment"],
             rfm_clustered["cluster"],
             values=rfm_clustered["customer_id"],
             aggfunc="count",
         ).fillna(0)
-        st.markdown("**RFM分层 × K-Means 交叉表**")
+        st.caption("表：RFM分层 × K-Means 交叉验证")
         st.dataframe(cross, use_container_width=True)
 
     # 3D 散点图
-    st.subheader("🎯 用户 3D 分布")
+    col_t, col_b = st.columns([10, 1])
+    with col_t:
+        st.subheader("🎯 用户 3D 分布")
+    with col_b:
+        with st.popover("📖 解读"):
+            st.markdown("""
+            **怎么看这张图？**
+            - **每个点**代表一个用户
+            - **X轴（消费间隔）**：越靠前说明用户最近来过，越靠后说明很久没来了
+            - **Y轴（消费频次）**：越靠右说明来得越勤
+            - **Z轴（消费金额）**：越靠上说明花钱越多
+            - **不同颜色**代表不同聚类分组
+            - **右上角靠前的点** = 高频高消费的黄金客户
+            - **用途**：直观看到用户分布，验证分层是否合理
+            """)
+
     fig_3d = rfm_scatter_3d(rfm_clustered, color_col="cluster")
     st.plotly_chart(fig_3d, use_container_width=True)
 
-    # ===== 面试要点 =====
-    with st.expander("📝 RFM + K-Means 面试讲解要点", expanded=False):
+    # ===== 讲解要点 =====
+    with st.expander("📝 RFM + K-Means 算法讲解要点", expanded=False):
         st.markdown(f"""
         ### 如何讲清楚这个模块？
 
@@ -159,14 +193,13 @@ def main():
         > "RFM 的规则分层是主观的——为什么是 3 等分？为什么这样组合？我用 K-Means 聚类来做交叉验证。先用肘部法则确定最优 K 值（看 inertia 曲线的拐点），然后聚类。如果交叉表显示两种方法的结果高度一致，就说明分层是客观可靠的。"
 
         **4. 业务落地**
-        > "分层之后，每一类用户有对应的运营策略。比如「重要挽留」类客户（R低F高M高），说明他们曾经是忠实客户但很久没来了——这是最高优先级的召回对象，建议定向推送大额优惠券甚至人工触达。"
+        > "分层之后，每一类用户有对应的运营策略。比如「重要挽留」类客户（R低F高M高），说明他们曾经是忠实客户但很久没来了——这是最高优先级的召回对象。"
 
         **当前数据洞察：**
         - 用户总数：{len(rfm_df)}
         - 平均消费间隔：{rfm_df['recency'].mean():.0f} 天
         - 平均消费频次：{rfm_df['frequency'].mean():.1f} 次
         """)
-        # 显示需要关注的人群
         at_risk = rfm_df[rfm_df["segment"].isin(["重要挽留", "流失高价值"])]
         if len(at_risk) > 0:
             st.info(f"当前有 **{len(at_risk)} 位**高价值客户有流失风险，建议优先召回")
