@@ -213,56 +213,70 @@ def main():
 
     st.divider()
 
-    # ===== 导出为 PNG 高清图 =====
+    # ===== 导出为 PNG 大图 =====
     st.subheader("📥 导出大屏")
     if st.button("生成大屏高清图片 (PNG)", type="primary"):
-        from plotly.subplots import make_subplots
+        from PIL import Image, ImageDraw, ImageFont
         from io import BytesIO
         import plotly.io as pio
 
         with st.spinner("正在生成高清大图，请稍候..."):
-            big_fig = make_subplots(
-                rows=3, cols=2,
-                row_heights=[0.35, 0.35, 0.3],
-                subplot_titles=(
-                    "营收趋势", "时段热力图",
-                    "商品销量排行 Top 10", "品类营收占比",
-                    "平台对比", "用户分层",
-                ),
-                specs=[
-                    [{"secondary_y": True}, {"type": "heatmap"}],
-                    [{"type": "bar"}, {"type": "pie"}],
-                    [{"type": "pie"}, {"type": "bar"}],
-                ],
-                vertical_spacing=0.1,
-                horizontal_spacing=0.08,
-            )
+            # 导出每张图为 PNG
+            imgs = []
+            for fig in [fig_trend, fig_heat, fig_rank, fig_pie, fig_seg, fig_plat]:
+                fig_copy = fig.to_dict()
+                fig_copy["layout"]["template"] = None  # 去掉主题让图片更干净
+                buf = pio.to_image(fig, format="png", scale=2, width=1200, height=600)
+                imgs.append(Image.open(BytesIO(buf)))
 
-            for trace in fig_trend.data:
-                big_fig.add_trace(trace, row=1, col=1)
-            for trace in fig_heat.data:
-                big_fig.add_trace(trace, row=1, col=2)
-            for trace in fig_rank.data:
-                big_fig.add_trace(trace, row=2, col=1)
-            for trace in fig_pie.data:
-                big_fig.add_trace(trace, row=2, col=2)
-            for trace in fig_plat.data:
-                big_fig.add_trace(trace, row=3, col=1)
-            for trace in fig_seg.data:
-                big_fig.add_trace(trace, row=3, col=2)
+            # 统一宽度
+            target_w = 1200
+            for i in range(len(imgs)):
+                w, h = imgs[i].size
+                ratio = target_w / w
+                imgs[i] = imgs[i].resize((target_w, int(h * ratio)), Image.LANCZOS)
 
-            big_fig.update_layout(
-                height=1600, width=1400,
-                showlegend=False,
-                title_text=f"餐饮经营数据可视化大屏 · {metrics['date_range']}",
-                title_font=dict(size=24),
-                margin=dict(l=40, r=40, t=80, b=40),
-            )
+            # 拼成 3行×2列 的网格
+            gap = 20  # 图间距
+            col_w = (target_w - gap) // 2
+            total_w = target_w
+            total_h = 0
 
-            # 导出为 PNG 字节
-            img_bytes = pio.to_image(big_fig, format="png", scale=2)
+            # 调整每张小图为统一列宽
+            for i in range(len(imgs)):
+                w, h = imgs[i].size
+                new_h = int(h * col_w / w)
+                imgs[i] = imgs[i].resize((col_w, new_h), Image.LANCZOS)
 
-        st.success("高清大图已生成！可用于 PPT、打印或直接分享。")
+            # 计算总高度
+            rows = [(0, 1), (2, 3), (4, 5)]  # 图表索引配对
+            row_heights = []
+            for left_i, right_i in rows:
+                row_heights.append(max(imgs[left_i].size[1], imgs[right_i].size[1]))
+            total_h = sum(row_heights) + gap * (len(rows) - 1)
+
+            # 创建画布
+            canvas = Image.new("RGB", (target_w, total_h + 80), (255, 255, 255))
+            draw = ImageDraw.Draw(canvas)
+
+            # 拼图
+            y = 0
+            for row_idx, (left_i, right_i) in enumerate(rows):
+                row_h = row_heights[row_idx]
+                # 左图
+                lw, lh = imgs[left_i].size
+                canvas.paste(imgs[left_i], (0, y + (row_h - lh) // 2))
+                # 右图
+                rw, rh = imgs[right_i].size
+                canvas.paste(imgs[right_i], (col_w + gap, y + (row_h - rh) // 2))
+                y += row_h + gap
+
+            # 另存为字节
+            out_buf = BytesIO()
+            canvas.save(out_buf, format="PNG", optimize=True)
+            img_bytes = out_buf.getvalue()
+
+        st.success(f"高清大图已生成（{canvas.size[0]}×{canvas.size[1]}px）！可用于 PPT、打印或直接分享。")
         st.download_button(
             label="📥 下载大屏图片 (PNG)",
             data=img_bytes,
