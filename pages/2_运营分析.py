@@ -151,12 +151,28 @@ def main():
         if not platform_df.empty:
             fig_plat = platform_comparison_chart(platform_df)
             st.plotly_chart(fig_plat, use_container_width=True)
-            st.dataframe(platform_df.style.format({
-                "total_revenue": "¥{:,.0f}",
-                "avg_order_value": "¥{:.2f}",
-                "refund_rate": "{:.1f}%",
-                "revenue_share": "{:.1f}%",
-            }), use_container_width=True)
+            # 卡片式展示各平台指标
+            for _, row in platform_df.iterrows():
+                st.markdown(f"""
+                <div style="
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 10px;
+                    padding: 0.8rem 1rem;
+                    margin: 0.4rem 0;
+                ">
+                    <span style="font-weight: 700; font-size: 1rem;">{row.name}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                c1, c2, c3, c4 = st.columns(4)
+                with c1:
+                    st.metric("营收贡献", f"¥{row['total_revenue']:,.0f}", delta=f"占{row['revenue_share']:.1f}%")
+                with c2:
+                    st.metric("客单价", f"¥{row['avg_order_value']:.2f}")
+                with c3:
+                    st.metric("退款率", f"{row['refund_rate']:.1f}%")
+                with c4:
+                    st.metric("顾客数", f"{int(row['unique_customers'])}")
         else:
             st.info("未识别到平台字段，无法做平台对比")
 
