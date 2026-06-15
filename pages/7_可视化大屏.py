@@ -1,6 +1,6 @@
 """
 页面7：可视化大屏
-全维度数据看板 — 核心指标 + 图表一览
+全维度数据看板 — 核心指标 + 图表一览 + 导出
 """
 
 import streamlit as st
@@ -31,49 +31,19 @@ from src.visualization import (
 
 st.set_page_config(page_title="可视化大屏 | 餐饮数据分析", page_icon="📺", layout="wide")
 
+
 GUIDES = {
-    "营收趋势": """
-    **怎么看这张图？**
-    - **蓝色实线**：每天的实际营收
-    - **黄色虚线**：7日移动平均，平滑波动看趋势
-    - **下方柱状图**：日环比变化，绿涨红跌
-    """,
-    "时段热力图": """
-    **怎么看这张图？**
-    - **行**=星期几，**列**=小时，**颜色越深**=订单越多
-    - 11-13点（午餐）和17-20点（晚餐）是两个高峰
-    - 周末下午时段比工作日活跃
-    """,
-    "商品排行": """
-    **怎么看这张图？**
-    - 横条越长 = 销量越高
-    - 蓝色越深 = 销量越大
-    - Top 10 快速识别爆款
-    """,
-    "品类占比": """
-    **怎么看这张图？**
-    - 扇区越大 = 营收贡献越高
-    - 右侧图例显示品类名称
-    - 帮助判断核心竞争力
-    """,
-    "用户分层": """
-    **怎么看这张图？**
-    - 横条越长 = 该类用户越多
-    - 重点关注"重要挽留"和"流失高价值"——人数少但价值高
-    - 帮助决定营销资源分配
-    """,
-    "平台对比": """
-    **怎么看这张图？**
-    - 左侧饼图：各平台营收占比
-    - 右侧柱状图：各平台客单价对比
-    - 退款率差异反映平台用户质量
-    """,
+    "营收趋势": "蓝色实线=每天营收。黄色虚线=7日移动平均。下方柱状=日环比，绿涨红跌。",
+    "时段热力图": "行=星期几，列=小时。颜色越深订单越多。午餐11-13点、晚餐17-20点两个高峰。",
+    "商品排行": "横条越长销量越高。蓝色越深销量越大。Top 10快速识别爆款。",
+    "品类占比": "扇区越大营收贡献越高。右侧图例显示品类名。帮助判断核心利润来源。",
+    "用户分层": "横条越长用户越多。重点关注'重要挽留'和'流失高价值'——人少但价值高。",
+    "平台对比": "左饼图=各平台营收占比。右柱状=各平台客单价。退款率差异反映用户质量。",
 }
 
 
 def main():
     inject_nav_css()
-
     st.title("📺 可视化大屏")
 
     df = st.session_state.get("df_orders")
@@ -81,7 +51,7 @@ def main():
         st.warning("请先在「数据上传与分析报告」页面加载数据")
         return
 
-    # ===== KPI 指标 =====
+    # ===== KPI =====
     metrics = compute_overview_metrics(df)
     stats = metrics["revenue_stats"]
 
@@ -111,7 +81,7 @@ def main():
     st.divider()
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ===== 营收趋势 — 全宽大图 =====
+    # ===== 营收趋势 =====
     col_t, col_b = st.columns([10, 1])
     with col_t:
         st.subheader("📈 营收趋势")
@@ -164,7 +134,7 @@ def main():
     st.markdown("<br>", unsafe_allow_html=True)
     st.divider()
 
-    # ===== 商品排行 — 全宽 =====
+    # ===== 商品排行 =====
     col_t, col_b = st.columns([10, 1])
     with col_t:
         st.subheader("🔥 商品销量排行 Top 10")
@@ -212,78 +182,6 @@ def main():
             st.plotly_chart(fig_seg, use_container_width=True)
 
     st.divider()
-
-    # ===== 导出为 PNG 大图 =====
-    st.subheader("📥 导出大屏")
-    if st.button("生成大屏高清图片 (PNG)", type="primary"):
-        from PIL import Image, ImageDraw, ImageFont
-        from io import BytesIO
-        import plotly.io as pio
-
-        with st.spinner("正在生成高清大图，请稍候..."):
-            # 导出每张图为 PNG
-            imgs = []
-            for fig in [fig_trend, fig_heat, fig_rank, fig_pie, fig_seg, fig_plat]:
-                fig_copy = fig.to_dict()
-                fig_copy["layout"]["template"] = None  # 去掉主题让图片更干净
-                buf = pio.to_image(fig, format="png", scale=2, width=1200, height=600)
-                imgs.append(Image.open(BytesIO(buf)))
-
-            # 统一宽度
-            target_w = 1200
-            for i in range(len(imgs)):
-                w, h = imgs[i].size
-                ratio = target_w / w
-                imgs[i] = imgs[i].resize((target_w, int(h * ratio)), Image.LANCZOS)
-
-            # 拼成 3行×2列 的网格
-            gap = 20  # 图间距
-            col_w = (target_w - gap) // 2
-            total_w = target_w
-            total_h = 0
-
-            # 调整每张小图为统一列宽
-            for i in range(len(imgs)):
-                w, h = imgs[i].size
-                new_h = int(h * col_w / w)
-                imgs[i] = imgs[i].resize((col_w, new_h), Image.LANCZOS)
-
-            # 计算总高度
-            rows = [(0, 1), (2, 3), (4, 5)]  # 图表索引配对
-            row_heights = []
-            for left_i, right_i in rows:
-                row_heights.append(max(imgs[left_i].size[1], imgs[right_i].size[1]))
-            total_h = sum(row_heights) + gap * (len(rows) - 1)
-
-            # 创建画布
-            canvas = Image.new("RGB", (target_w, total_h + 80), (255, 255, 255))
-            draw = ImageDraw.Draw(canvas)
-
-            # 拼图
-            y = 0
-            for row_idx, (left_i, right_i) in enumerate(rows):
-                row_h = row_heights[row_idx]
-                # 左图
-                lw, lh = imgs[left_i].size
-                canvas.paste(imgs[left_i], (0, y + (row_h - lh) // 2))
-                # 右图
-                rw, rh = imgs[right_i].size
-                canvas.paste(imgs[right_i], (col_w + gap, y + (row_h - rh) // 2))
-                y += row_h + gap
-
-            # 另存为字节
-            out_buf = BytesIO()
-            canvas.save(out_buf, format="PNG", optimize=True)
-            img_bytes = out_buf.getvalue()
-
-        st.success(f"高清大图已生成（{canvas.size[0]}×{canvas.size[1]}px）！可用于 PPT、打印或直接分享。")
-        st.download_button(
-            label="📥 下载大屏图片 (PNG)",
-            data=img_bytes,
-            file_name="可视化大屏.png",
-            mime="image/png",
-        )
-
     st.caption("数据科学与大数据技术 · 可视化大屏")
 
 
