@@ -180,14 +180,12 @@ def main():
     # ===== 时间序列预测 =====
     st.subheader("📈 营收预测")
 
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2 = st.columns([3, 1])
     with col1:
         st.markdown("""
         > 选择不同预测方法对比效果：**随机森林**精度最高、**线性回归**最简洁、**移动平均**作基线参考。
         """)
     with col2:
-        forecast_days = st.slider("预测天数", 7, 30, 14)
-    with col3:
         method = st.selectbox(
             "预测方法",
             ["随机森林回归", "线性回归", "移动平均"],
@@ -196,6 +194,14 @@ def main():
 
     # 构建日聚合数据
     daily_df = compute_trend_analysis(df)
+
+    # ===== 预测天数 — 醒目的全宽控件 =====
+    st.markdown("---")
+    forecast_days = st.select_slider(
+        "**预测天数**（拖动选择未来预测多少天）",
+        options=[7, 14, 21, 30],
+        value=14,
+    )
 
     with st.spinner(f"正在训练 {method} 模型（未来 {forecast_days} 天）..."):
         forecast_result, forecast_meta = _forecast_revenue(daily_df, forecast_days=forecast_days, method=method)
