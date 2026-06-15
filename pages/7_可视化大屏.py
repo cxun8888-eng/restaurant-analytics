@@ -83,14 +83,25 @@ def main():
         st.markdown("""
         <style>
         @media print {
-            [data-testid="stSidebar"] { display: none !important; }
-            header { display: none !important; }
-            footer { display: none !important; }
-            .stButton { display: none !important; }
-            [data-testid="stPopover"] { display: none !important; }
-            [data-testid="stExpander"] { display: none !important; }
+            @page { size: A3 landscape; margin: 0.5cm; }
+            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+            [data-testid="stSidebar"],
+            header, footer,
+            [data-testid="stToolbar"],
+            .stDeployButton,
+            [data-testid="baseButton-header"],
+            [data-testid="baseButton-headerNoPadding"] { display: none !important; }
+
             .main .block-container { padding: 0 !important; max-width: 100% !important; }
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+            /* 图表 iframe 打印时可见 */
+            iframe { display: block !important; visibility: visible !important; opacity: 1 !important; }
+
+            /* 让内容自适应 */
+            .stPlotlyChart { break-inside: avoid; }
+            [data-testid="stMetric"] { break-inside: avoid; }
+            h2, h3 { break-after: avoid; }
         }
         </style>
         """, unsafe_allow_html=True)
