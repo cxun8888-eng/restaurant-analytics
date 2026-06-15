@@ -1,11 +1,9 @@
 """侧边栏导航样式 + 标题层级 — 统一注入"""
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 
 def inject_nav_css():
-    # ===== CSS 部分 =====
     st.markdown("""
     <style>
     [data-testid="stSidebar"] {
@@ -13,6 +11,7 @@ def inject_nav_css():
         max-width: 340px !important;
     }
 
+    /* 基础样式 */
     [data-testid="stSidebarNavLink"] {
         font-size: 2rem !important;
         font-weight: 600 !important;
@@ -25,10 +24,76 @@ def inject_nav_css():
     [data-testid="stSidebarNavLink"]:hover {
         filter: brightness(0.95) !important;
     }
+
+    /* 当前激活页 */
     [data-testid="stSidebarNavLink"][aria-current="page"] {
         font-weight: 700 !important;
         font-size: 2.4rem !important;
         color: #111 !important;
+    }
+
+    /* ===== 按位置配色 (nth-child) ===== */
+    /* 1 — 首页 — 蓝 */
+    [data-testid="stSidebarNavLink"]:nth-child(1) {
+        border-left-color: #3b82f6 !important;
+        background-color: #eff6ff !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(1)[aria-current="page"] {
+        background-color: #dbeafe !important;
+    }
+
+    /* 2 — 数据上传与分析报告 — 绿 */
+    [data-testid="stSidebarNavLink"]:nth-child(2) {
+        border-left-color: #10b981 !important;
+        background-color: #ecfdf5 !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(2)[aria-current="page"] {
+        background-color: #d1fae5 !important;
+    }
+
+    /* 3 — 运营分析 — 琥珀 */
+    [data-testid="stSidebarNavLink"]:nth-child(3) {
+        border-left-color: #f59e0b !important;
+        background-color: #fffbeb !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(3)[aria-current="page"] {
+        background-color: #fef3c7 !important;
+    }
+
+    /* 4 — 商品分析 — 紫 */
+    [data-testid="stSidebarNavLink"]:nth-child(4) {
+        border-left-color: #8b5cf6 !important;
+        background-color: #f5f3ff !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(4)[aria-current="page"] {
+        background-color: #ede9fe !important;
+    }
+
+    /* 5 — 用户分析 — 粉 */
+    [data-testid="stSidebarNavLink"]:nth-child(5) {
+        border-left-color: #ec4899 !important;
+        background-color: #fdf2f8 !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(5)[aria-current="page"] {
+        background-color: #fce7f3 !important;
+    }
+
+    /* 6 — 智能预测 — 青 */
+    [data-testid="stSidebarNavLink"]:nth-child(6) {
+        border-left-color: #06b6d4 !important;
+        background-color: #ecfeff !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(6)[aria-current="page"] {
+        background-color: #cffafe !important;
+    }
+
+    /* 7 — 可视化大屏 — 橙 */
+    [data-testid="stSidebarNavLink"]:nth-child(7) {
+        border-left-color: #f97316 !important;
+        background-color: #fff7ed !important;
+    }
+    [data-testid="stSidebarNavLink"]:nth-child(7)[aria-current="page"] {
+        background-color: #fed7aa !important;
     }
 
     /* ===== 标题层级 ===== */
@@ -62,46 +127,13 @@ def inject_nav_css():
         color: #9ca3af !important;
     }
     </style>
-    """, unsafe_allow_html=True)
 
-    # ===== JS 部分（用 components.html 注入，不会被过滤） =====
-    components.html("""
     <script>
-    (function() {
-        const COLORS = {
-            'app':        { border: '#3b82f6', bg: '#eff6ff' },
-            '首页':        { border: '#3b82f6', bg: '#eff6ff' },
-            '数据上传与分析报告': { border: '#10b981', bg: '#ecfdf5' },
-            '运营分析':     { border: '#f59e0b', bg: '#fffbeb' },
-            '商品分析':     { border: '#8b5cf6', bg: '#f5f3ff' },
-            '用户分析':     { border: '#ec4899', bg: '#fdf2f8' },
-            '智能预测':     { border: '#06b6d4', bg: '#ecfeff' },
-            '可视化大屏':   { border: '#f97316', bg: '#fff7ed' },
-        };
-
-        function colorize() {
-            document.querySelectorAll('[data-testid="stSidebarNavLink"]').forEach(el => {
-                const text = el.textContent.trim();
-                const c = COLORS[text];
-                if (!c) return;
-
-                if (text === 'app') {
-                    const span = el.querySelector('span');
-                    if (span) span.textContent = '首页';
-                }
-
-                el.style.borderLeftColor = c.border;
-
-                if (el.getAttribute('aria-current') === 'page') {
-                    el.style.backgroundColor = c.border + '22';
-                } else {
-                    el.style.backgroundColor = c.bg;
-                }
-            });
-        }
-
-        colorize();
-        setInterval(colorize, 500);
-    })();
+    // "app" → "首页"
+    new MutationObserver(() => {
+        document.querySelectorAll('[data-testid="stSidebarNavLink"] span').forEach(el => {
+            if (el.textContent.trim() === 'app') el.textContent = '首页';
+        });
+    }).observe(document.body, { childList: true, subtree: true });
     </script>
-    """, height=0, scrolling=False)
+    """, unsafe_allow_html=True)
