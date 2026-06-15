@@ -14,12 +14,12 @@ from src.nav_style import inject_nav_css
 from src.data_pipeline import DataPipeline, load_sample_data, summarize_dataframe
 
 
-st.set_page_config(page_title="数据上传 | 餐饮数据分析", page_icon="📤", layout="wide")
+st.set_page_config(page_title="数据上传与分析报告 | 餐饮数据分析", page_icon="📤", layout="wide")
 
 
 def main():
     inject_nav_css()
-    st.title("📤 数据上传 & 数据质量检查")
+    st.title("📤 数据上传 & 分析报告")
     st.markdown("支持美团、微信点单、饿了么等平台导出的 CSV/Excel 文件。系统将自动识别表头、清洗异常值、输出数据质量报告。")
 
     # ---- 数据来源选择 ----
@@ -141,6 +141,64 @@ def main():
         | actual_amount | 实付金额 | 26.00 |
         | status | 订单状态 | completed / refunded |
         """)
+
+
+    # ===== 一键分析报告 =====
+    st.divider()
+    st.subheader("📋 一键生成经营诊断报告")
+
+    col_btn, col_info = st.columns([1, 3])
+    with col_btn:
+        gen_report = st.button("🔍 生成完整诊断报告", type="primary", use_container_width=True)
+    with col_info:
+        st.caption("基于当前加载的数据，自动运行用户分析、商品分析、异常检测、营收预测等全部模块，生成专业经营诊断报告。")
+
+    if gen_report:
+        from src.analysis import compute_overview_metrics, compute_product_analysis, compute_platform_comparison
+        from src.features import build_rfm_features
+        from src.models import run_apriori, run_isolation_forest
+        from src.report import generate_full_report
+
+        overview = compute_overview_metrics(df)
+        product_data = compute_product_analysis(df)
+        platform_df = compute_platform_comparison(df)
+        rfm_df = build_rfm_features(df)
+        assoc_rules = run_apriori(df)
+        anomaly_df = run_isolation_forest(df)
+
+        # 构造预测结果（简化版）
+        from src.analysis import compute_trend_analysis
+        daily_df = compute_trend_analysis(df)
+        rev_col = "revenue"
+        avg_val = daily_df[rev_col].tail(7).mean()
+        forecast_simple = pd.DataFrame({
+            "date": pd.date_range(pd.Timestamp.now(), periods=7).strftime("%Y-%m-%d").tolist(),
+            "predicted": [round(avg_val, 2)] * 7,
+            "lower_bound": [round(avg_val * 0.85, 2)] * 7,
+            "upper_bound": [round(avg_val * 1.15, 2)] * 7,
+        })
+
+        with st.spinner("正在生成完整诊断报告..."):
+            report = generate_full_report(
+                overview=overview,
+                product_analysis=product_data,
+                rfm_df=rfm_df,
+                assoc_rules=assoc_rules,
+                forecast_result=forecast_simple,
+                anomaly_orders=anomaly_df,
+                platform_df=platform_df,
+            )
+
+        st.divider()
+        st.markdown(report)
+
+        # 下载按钮
+        st.download_button(
+            label="📥 下载报告（Markdown）",
+            data=report,
+            file_name=f"经营诊断报告_{overview.get('date_range', 'report')}.md",
+            mime="text/markdown",
+        )
 
 
 if __name__ == "__main__":
