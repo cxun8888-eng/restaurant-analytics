@@ -13,9 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.nav_style import inject_nav_css
 from src.models import run_isolation_forest
-from src.nav_style import inject_nav_css
 from src.analysis import compute_trend_analysis
-from src.nav_style import inject_nav_css
 from src.visualization import forecast_chart
 
 

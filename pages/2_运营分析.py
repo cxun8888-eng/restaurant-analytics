@@ -1,5 +1,5 @@
 """
-页面2：经营概览
+页面2：运营分析
 展示核心指标卡片、营收趋势、时段热力图、平台对比
 """
 
@@ -16,9 +16,7 @@ from src.analysis import (
     compute_trend_analysis,
     compute_platform_comparison,
 )
-from src.nav_style import inject_nav_css
 from src.features import build_hourly_heatmap
-from src.nav_style import inject_nav_css
 from src.visualization import (
     revenue_trend_chart,
     hourly_heatmap_chart,
@@ -26,12 +24,42 @@ from src.visualization import (
 )
 
 
-st.set_page_config(page_title="经营概览 | 餐饮数据分析", page_icon="📊", layout="wide")
+st.set_page_config(page_title="运营分析 | 餐饮数据分析", page_icon="📊", layout="wide")
+
+
+# ===== 图表说明文案 =====
+CHART_GUIDES = {
+    "营收趋势": """
+    **怎么看这张图？**
+
+    - **蓝色实线**：每一天的实际营收金额
+    - **黄色虚线**：7日移动平均线，平滑了每日波动，能更清晰地看到整体趋势方向
+    - **下方柱状图**：每日环比变化百分比。绿色柱表示增长，红色柱表示下降
+    - **小技巧**：如果蓝线波动大，看黄线来判断趋势；绿柱持续出现说明业绩在改善
+    """,
+    "时段热力图": """
+    **怎么看这张图？**
+
+    - **每一行**代表一周中的某一天（周一~周日），**每一列**代表一天中的某一个小时（0点~23点）
+    - **颜色越深**，说明这个时段的平均订单数越多，生意越忙
+    - **典型规律**：工作日的午餐（11-13点）和晚餐（17-20点）颜色最深，是两个高峰
+    - **周末特点**：午餐高峰可能延后，晚餐时段拉长，下午时段也比工作日活跃
+    - **用途**：帮助安排排班、备货时间，把钱和人力花在刀刃上
+    """,
+    "平台对比": """
+    **怎么看这张图？**
+
+    - **左侧饼图**：各平台（美团/微信/饿了么）贡献的营收占比，看哪个平台是主要收入来源
+    - **右侧柱状图**：各平台的客单价对比，看哪个平台的顾客更愿意花钱
+    - **表格数据**：还包含了退款率对比——退款率高的平台可能需要关注用户质量或活动类型
+    - **用途**：指导在不同平台上的运营策略和活动预算分配
+    """,
+}
 
 
 def main():
     inject_nav_css()
-    st.title("📊 经营概览")
+    st.title("📊 运营分析")
 
     df = st.session_state.get("df_orders")
     if df is None:
@@ -82,7 +110,13 @@ def main():
     st.divider()
 
     # ===== 营收趋势图 =====
-    st.subheader("📈 营收趋势")
+    col_title, col_btn = st.columns([10, 1])
+    with col_title:
+        st.subheader("📈 营收趋势")
+    with col_btn:
+        with st.popover("📖 解读"):
+            st.markdown(CHART_GUIDES["营收趋势"])
+
     daily_df = compute_trend_analysis(df)
     fig_trend = revenue_trend_chart(daily_df)
     st.plotly_chart(fig_trend, use_container_width=True)
@@ -91,7 +125,13 @@ def main():
     col_left, col_right = st.columns(2)
 
     with col_left:
-        st.subheader("🕐 时段热力图")
+        col_t, col_b = st.columns([10, 1])
+        with col_t:
+            st.subheader("🕐 时段热力图")
+        with col_b:
+            with st.popover("📖 解读"):
+                st.markdown(CHART_GUIDES["时段热力图"])
+
         heatmap = build_hourly_heatmap(df)
         if not heatmap.empty:
             fig_heat = hourly_heatmap_chart(heatmap)
@@ -100,7 +140,13 @@ def main():
             st.info("数据缺少小时(hour)字段，无法生成时段热力图")
 
     with col_right:
-        st.subheader("📱 平台对比")
+        col_t, col_b = st.columns([10, 1])
+        with col_t:
+            st.subheader("📱 平台对比")
+        with col_b:
+            with st.popover("📖 解读"):
+                st.markdown(CHART_GUIDES["平台对比"])
+
         platform_df = compute_platform_comparison(df)
         if not platform_df.empty:
             fig_plat = platform_comparison_chart(platform_df)
@@ -115,7 +161,7 @@ def main():
             st.info("未识别到平台字段，无法做平台对比")
 
     # ===== 数据解读 =====
-    with st.expander("📝 数据解读（面试讲解要点）", expanded=False):
+    with st.expander("📝 数据解读", expanded=False):
         st.markdown(f"""
         ### 如何解读这些数据？
 
