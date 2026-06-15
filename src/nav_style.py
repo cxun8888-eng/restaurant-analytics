@@ -71,4 +71,16 @@ def inject_nav_css():
         color: #9ca3af !important;
     }
     </style>
+
+    <script>
+    // 侧边栏 "app" → "首页"
+    const observer = new MutationObserver(() => {
+        document.querySelectorAll('[data-testid="stSidebarNavLink"] span').forEach(el => {
+            if (el.textContent.trim() === 'app') {
+                el.textContent = '首页';
+            }
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    </script>
     """, unsafe_allow_html=True)
