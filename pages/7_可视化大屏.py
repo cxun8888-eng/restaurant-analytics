@@ -222,33 +222,123 @@ def main():
         # 收集当前页面所有图表
         all_figs = [fig_trend, fig_heat, fig_plat, fig_rank, fig_pie, fig_seg]
 
-        # 构建完整 HTML
-        html_parts = ["""
+        # 构建大屏 HTML — 专业排版
+        html_parts = [f"""
         <!DOCTYPE html>
-        <html><head><meta charset="utf-8">
-        <title>可视化大屏</title>
+        <html lang="zh">
+        <head>
+        <meta charset="utf-8">
+        <title>餐饮经营数据可视化大屏</title>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <style>
-            body { font-family: 'Microsoft YaHei', sans-serif; background: #f8f9fa; padding: 20px; }
-            h1 { text-align: center; color: #1a1a2e; margin-bottom: 0; }
-            .sub { text-align: center; color: #6b7280; margin-bottom: 30px; }
-            .row { display: flex; gap: 20px; margin-bottom: 20px; }
-            .col { flex: 1; }
-            .full { margin-bottom: 20px; }
-        </style></head><body>
-        <h1>餐饮经营数据可视化大屏</h1>
-        <p class="sub">数据科学与大数据技术 · 自动生成</p>
-        """, """
-        <div class="full">""", pio.to_html(all_figs[0], include_plotlyjs=False, full_html=False), """</div>
-        <div class="row">
-            <div class="col">""", pio.to_html(all_figs[1], include_plotlyjs=False, full_html=False), """</div>
-            <div class="col">""", pio.to_html(all_figs[2], include_plotlyjs=False, full_html=False), """</div>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+                background: #0f172a;
+                color: #e2e8f0;
+                padding: 2rem;
+                min-height: 100vh;
+            }}
+            .header {{
+                text-align: center;
+                padding: 2rem 0 2.5rem 0;
+                border-bottom: 1px solid #1e293b;
+                margin-bottom: 2.5rem;
+            }}
+            .header h1 {{
+                font-size: 2.4rem;
+                font-weight: 300;
+                letter-spacing: 0.08em;
+                color: #f1f5f9;
+                margin-bottom: 0.4rem;
+            }}
+            .header .sub {{
+                font-size: 0.9rem;
+                color: #64748b;
+                letter-spacing: 0.15em;
+            }}
+            .section-title {{
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: #94a3b8;
+                padding: 0.5rem 0;
+                margin: 1.5rem 0 0.8rem 0;
+                border-left: 4px solid #38bdf8;
+                padding-left: 1rem;
+            }}
+            .chart-container {{
+                background: #1e293b;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }}
+            .chart-container.full {{}}
+            .chart-row {{
+                display: flex;
+                gap: 1.5rem;
+                margin-bottom: 1.5rem;
+            }}
+            .chart-col {{
+                flex: 1;
+                background: #1e293b;
+                border-radius: 12px;
+                padding: 1.5rem;
+            }}
+            .chart-col .section-title {{ margin-top: 0; }}
+            .footer {{
+                text-align: center;
+                padding: 2rem;
+                color: #475569;
+                font-size: 0.8rem;
+                letter-spacing: 0.1em;
+            }}
+            @media print {{
+                body {{ background: white; color: #111; }}
+                .chart-container, .chart-col {{ background: #f8f9fa; border: 1px solid #e5e7eb; }}
+            }}
+        </style>
+        </head>
+        <body>
+
+        <div class="header">
+            <h1>餐饮经营数据可视化大屏</h1>
+            <div class="sub">数据科学与大数据技术 · 分析周期 {metrics["date_range"]} · 总营收 ¥{metrics["total_revenue"]:,.0f}</div>
         </div>
-        <div class="full">""", pio.to_html(all_figs[3], include_plotlyjs=False, full_html=False), """</div>
-        <div class="row">
-            <div class="col">""", pio.to_html(all_figs[4], include_plotlyjs=False, full_html=False), """</div>
-            <div class="col">""", pio.to_html(all_figs[5], include_plotlyjs=False, full_html=False), """</div>
+
+        <div class="chart-container full">
+            <div class="section-title">📈 营收趋势</div>
+            {pio.to_html(all_figs[0], include_plotlyjs=False, full_html=False)}
         </div>
+
+        <div class="chart-row">
+            <div class="chart-col">
+                <div class="section-title">🕐 时段热力图</div>
+                {pio.to_html(all_figs[1], include_plotlyjs=False, full_html=False)}
+            </div>
+            <div class="chart-col">
+                <div class="section-title">📱 平台对比</div>
+                {pio.to_html(all_figs[2], include_plotlyjs=False, full_html=False)}
+            </div>
+        </div>
+
+        <div class="chart-container full">
+            <div class="section-title">🔥 商品销量排行 Top 10</div>
+            {pio.to_html(all_figs[3], include_plotlyjs=False, full_html=False)}
+        </div>
+
+        <div class="chart-row">
+            <div class="chart-col">
+                <div class="section-title">🥧 品类营收占比</div>
+                {pio.to_html(all_figs[4], include_plotlyjs=False, full_html=False)}
+            </div>
+            <div class="chart-col">
+                <div class="section-title">👥 用户分层</div>
+                {pio.to_html(all_figs[5], include_plotlyjs=False, full_html=False)}
+            </div>
+        </div>
+
+        <div class="footer">餐饮多平台经营数据分析系统 · 自动生成</div>
+
         </body></html>"""]
 
         full_html = "\n".join(html_parts)
