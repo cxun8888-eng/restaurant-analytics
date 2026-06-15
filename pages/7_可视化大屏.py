@@ -213,143 +213,61 @@ def main():
 
     st.divider()
 
-    # ===== 导出大屏为 HTML 文件 =====
+    # ===== 导出为 PNG 高清图 =====
     st.subheader("📥 导出大屏")
-    if st.button("生成大屏HTML文件", type="primary"):
-        import plotly.io as pio
+    if st.button("生成大屏高清图片 (PNG)", type="primary"):
+        from plotly.subplots import make_subplots
         from io import BytesIO
+        import plotly.io as pio
 
-        # 收集当前页面所有图表
-        all_figs = [fig_trend, fig_heat, fig_plat, fig_rank, fig_pie, fig_seg]
+        with st.spinner("正在生成高清大图，请稍候..."):
+            big_fig = make_subplots(
+                rows=3, cols=2,
+                row_heights=[0.35, 0.35, 0.3],
+                subplot_titles=(
+                    "营收趋势", "时段热力图",
+                    "商品销量排行 Top 10", "品类营收占比",
+                    "平台对比", "用户分层",
+                ),
+                specs=[
+                    [{"secondary_y": True}, {"type": "heatmap"}],
+                    [{"type": "bar"}, {"type": "pie"}],
+                    [{"type": "pie"}, {"type": "bar"}],
+                ],
+                vertical_spacing=0.1,
+                horizontal_spacing=0.08,
+            )
 
-        # 构建大屏 HTML — 专业排版
-        html_parts = [f"""
-        <!DOCTYPE html>
-        <html lang="zh">
-        <head>
-        <meta charset="utf-8">
-        <title>餐饮经营数据可视化大屏</title>
-        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{
-                font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-                background: #0f172a;
-                color: #e2e8f0;
-                padding: 2rem;
-                min-height: 100vh;
-            }}
-            .header {{
-                text-align: center;
-                padding: 2rem 0 2.5rem 0;
-                border-bottom: 1px solid #1e293b;
-                margin-bottom: 2.5rem;
-            }}
-            .header h1 {{
-                font-size: 2.4rem;
-                font-weight: 300;
-                letter-spacing: 0.08em;
-                color: #f1f5f9;
-                margin-bottom: 0.4rem;
-            }}
-            .header .sub {{
-                font-size: 0.9rem;
-                color: #64748b;
-                letter-spacing: 0.15em;
-            }}
-            .section-title {{
-                font-size: 1.1rem;
-                font-weight: 600;
-                color: #94a3b8;
-                padding: 0.5rem 0;
-                margin: 1.5rem 0 0.8rem 0;
-                border-left: 4px solid #38bdf8;
-                padding-left: 1rem;
-            }}
-            .chart-container {{
-                background: #1e293b;
-                border-radius: 12px;
-                padding: 1.5rem;
-                margin-bottom: 1.5rem;
-            }}
-            .chart-container.full {{}}
-            .chart-row {{
-                display: flex;
-                gap: 1.5rem;
-                margin-bottom: 1.5rem;
-            }}
-            .chart-col {{
-                flex: 1;
-                background: #1e293b;
-                border-radius: 12px;
-                padding: 1.5rem;
-            }}
-            .chart-col .section-title {{ margin-top: 0; }}
-            .footer {{
-                text-align: center;
-                padding: 2rem;
-                color: #475569;
-                font-size: 0.8rem;
-                letter-spacing: 0.1em;
-            }}
-            @media print {{
-                body {{ background: white; color: #111; }}
-                .chart-container, .chart-col {{ background: #f8f9fa; border: 1px solid #e5e7eb; }}
-            }}
-        </style>
-        </head>
-        <body>
+            for trace in fig_trend.data:
+                big_fig.add_trace(trace, row=1, col=1)
+            for trace in fig_heat.data:
+                big_fig.add_trace(trace, row=1, col=2)
+            for trace in fig_rank.data:
+                big_fig.add_trace(trace, row=2, col=1)
+            for trace in fig_pie.data:
+                big_fig.add_trace(trace, row=2, col=2)
+            for trace in fig_plat.data:
+                big_fig.add_trace(trace, row=3, col=1)
+            for trace in fig_seg.data:
+                big_fig.add_trace(trace, row=3, col=2)
 
-        <div class="header">
-            <h1>餐饮经营数据可视化大屏</h1>
-            <div class="sub">数据科学与大数据技术 · 分析周期 {metrics["date_range"]} · 总营收 ¥{metrics["total_revenue"]:,.0f}</div>
-        </div>
+            big_fig.update_layout(
+                height=1600, width=1400,
+                showlegend=False,
+                title_text=f"餐饮经营数据可视化大屏 · {metrics['date_range']}",
+                title_font=dict(size=24),
+                margin=dict(l=40, r=40, t=80, b=40),
+            )
 
-        <div class="chart-container full">
-            <div class="section-title">📈 营收趋势</div>
-            {pio.to_html(all_figs[0], include_plotlyjs=False, full_html=False)}
-        </div>
+            # 导出为 PNG 字节
+            img_bytes = pio.to_image(big_fig, format="png", scale=2)
 
-        <div class="chart-row">
-            <div class="chart-col">
-                <div class="section-title">🕐 时段热力图</div>
-                {pio.to_html(all_figs[1], include_plotlyjs=False, full_html=False)}
-            </div>
-            <div class="chart-col">
-                <div class="section-title">📱 平台对比</div>
-                {pio.to_html(all_figs[2], include_plotlyjs=False, full_html=False)}
-            </div>
-        </div>
-
-        <div class="chart-container full">
-            <div class="section-title">🔥 商品销量排行 Top 10</div>
-            {pio.to_html(all_figs[3], include_plotlyjs=False, full_html=False)}
-        </div>
-
-        <div class="chart-row">
-            <div class="chart-col">
-                <div class="section-title">🥧 品类营收占比</div>
-                {pio.to_html(all_figs[4], include_plotlyjs=False, full_html=False)}
-            </div>
-            <div class="chart-col">
-                <div class="section-title">👥 用户分层</div>
-                {pio.to_html(all_figs[5], include_plotlyjs=False, full_html=False)}
-            </div>
-        </div>
-
-        <div class="footer">餐饮多平台经营数据分析系统 · 自动生成</div>
-
-        </body></html>"""]
-
-        full_html = "\n".join(html_parts)
-        buf = BytesIO(full_html.encode("utf-8"))
-
-        st.success("大屏 HTML 文件已生成，点击下方按钮下载后用浏览器打开即可查看完整大屏。")
+        st.success("高清大图已生成！可用于 PPT、打印或直接分享。")
         st.download_button(
-            label="📥 下载大屏HTML文件",
-            data=buf,
-            file_name="可视化大屏.html",
-            mime="text/html",
+            label="📥 下载大屏图片 (PNG)",
+            data=img_bytes,
+            file_name="可视化大屏.png",
+            mime="image/png",
         )
 
     st.caption("数据科学与大数据技术 · 可视化大屏")

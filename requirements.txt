@@ -7,3 +7,4 @@ mlxtend>=0.22.0
 openpyxl>=3.1.0
 scipy>=1.11.0
 joblib>=1.3.0
+kaleido>=0.2.1
