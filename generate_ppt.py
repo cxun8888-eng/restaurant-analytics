@@ -91,7 +91,7 @@ add_shape(slide, 2, 2.8, 9.3, 0.03, C_PRIMARY)
 add_text_box(slide, 2, 1.8, 9.3, 0.8, '餐饮多平台经营数据分析系统', font_size=40, color=C_WHITE, bold=True, align=PP_ALIGN.CENTER)
 add_text_box(slide, 2, 3.0, 9.3, 0.6, '从CSV上传到智能经营建议 — 全链路数据闭环', font_size=18, color=C_GRAY, align=PP_ALIGN.CENTER)
 add_text_box(slide, 2, 4.0, 9.3, 0.5, '数据科学与大数据技术 · 个人项目', font_size=14, color=C_WHITE, align=PP_ALIGN.CENTER)
-add_text_box(slide, 2, 5.2, 9.3, 0.4, 'Python | Streamlit | Pandas | Scikit-learn | Plotly', font_size=12, color=C_GRAY, align=PP_ALIGN.CENTER)
+add_text_box(slide, 2, 5.2, 9.3, 0.4, 'React | FastAPI | Python | Pandas | Scikit-learn | Plotly', font_size=12, color=C_GRAY, align=PP_ALIGN.CENTER)
 
 # ============================================================
 # Slide 2: 项目背景 & 目标
@@ -119,8 +119,8 @@ add_text_box(slide, 7, 1.5, 5.5, 2.5,
 
 # 底部技术标签
 add_shape(slide, 0.8, 5.6, 11.7, 1.2, C_BG)
-add_text_box(slide, 1.2, 5.8, 11, 1, '技术栈：Python | Streamlit | Pandas | NumPy | Scikit-learn | Plotly | mlxtend | SciPy\n'
-           '数据来源：模拟数据（90天×日均120单，500位顾客，30+商品，3个平台） | 公网地址：已部署至 Streamlit Community Cloud',
+add_text_box(slide, 1.2, 5.8, 11, 1, '技术栈：React | FastAPI | Python | Pandas | NumPy | Scikit-learn | Plotly | mlxtend | SciPy\n'
+           '数据来源：模拟数据（90天×日均120单，500位顾客，30+商品，3个平台） | 部署：Docker Compose',
            font_size=12, color=C_DARK)
 
 # ============================================================
@@ -332,7 +332,7 @@ highlights = [
     ('全链路闭环', '从原始CSV上传到自然语言经营建议，\n覆盖6大分析页面+8个核心模块'),
     ('算法多样性', '数据挖掘(Apriori)+机器学习(K-Means/RF)\n+异常检测(Isolation Forest) 三类共6种算法'),
     ('特征工程', 'RFM三维特征构造、17维时间特征工程、\n时段特征衍生、品类偏好特征'),
-    ('工程落地', '模块化架构(src/与pages/分离)、\nStreamlit Cloud公网部署、代码可维护'),
+    ('工程落地', '前后端分离架构(React + FastAPI)、\nDocker Compose部署、代码可维护'),
     ('数据思维', '多算法协同验证(RFM+KMeans交叉验证)\n双层异常检测(IQR初筛+IF多维复核)'),
     ('闭环设计', '从数据分析到可执行决策的最后一公里\n→ 一键生成自然语言经营建议报告'),
 ]
@@ -344,7 +344,7 @@ for i, (title, desc) in enumerate(highlights):
     y = 1.5 + row * 2.8
     add_card(slide, x, y, 3.8, 2.3, '', title, desc, C_PRIMARY if row == 0 else C_ACCENT)
 
-add_text_box(slide, 0.8, 6.8, 11, 0.4, 'restaurant-analytics-8fgygzvdk9b9edpxe4rpdc.streamlit.app',
+add_text_box(slide, 0.8, 6.8, 11, 0.4, 'github.com/CXUN8888-eng/restaurant-analytics',
            font_size=11, color=C_GRAY, align=PP_ALIGN.CENTER)
 
 # ===== 保存 =====

@@ -1,102 +1,129 @@
----
-title: 餐饮数据分析系统
-emoji: 🍜
-colorFrom: indigo
-colorTo: green
-sdk: docker
-app_file: app.py
-pinned: false
----
+# 🍜 餐饮订单数据分析系统
 
-# 餐饮多平台经营数据分析系统
+一个面向餐饮经营场景的数据分析与决策支持系统。它把平台导出的订单明细转化为经营指标、商品组合、用户分层、营收预测和可执行的经营建议。
 
-数据科学与大数据技术专业 · 个人项目
+项目采用 **React + FastAPI 前后端分离架构**，并通过 Docker Compose 提供一键启动和开发热更新能力。
 
----
+## ✨ 核心能力
 
-## 项目概述
+- **数据上传与 ETL**：支持 CSV/Excel，自动识别字段、校验数据质量、处理缺失值和异常值。
+- **经营概览**：营收、订单数、客单价、趋势分析、时段热力图和经营看板。
+- **商品分析**：销量与品类排行，使用 Apriori 关联规则挖掘菜品搭配和套餐机会。
+- **用户分析**：基于 RFM 模型进行用户分层，并使用 K-Means 做聚类交叉验证。
+- **智能预测**：使用时间特征工程、随机森林/线性回归/移动平均预测营收趋势。
+- **异常检测**：使用 Isolation Forest 识别可能需要关注的异常订单或经营波动。
+- **分析报告**：将指标和模型结果汇总为自然语言经营诊断报告。
+- **账号与数据隔离**：前后端版提供注册、登录、Cookie 会话和按用户绑定数据集的能力。
 
-商家的美团、微信点单、饿了么等平台的订单数据通常是"死"的 Excel —— 本项目将它们盘活。
+## 🖥️ 技术栈
 
-上传 CSV/Excel 订单数据 → 自动完成清洗 → 特征工程 → 建模 → 可视化 → **智能经营建议**
+| 层次 | 技术 |
+| --- | --- |
+| 前端 | React、Vite、JavaScript、Plotly |
+| 后端 | Python、FastAPI、SQLAlchemy、Pydantic |
+| 数据分析 | Pandas、NumPy、SciPy |
+| 机器学习 | Scikit-learn（K-Means、Random Forest、Isolation Forest） |
+| 关联规则 | mlxtend（Apriori、Support、Confidence、Lift） |
+| 持久化 | PostgreSQL（Compose）/ SQLite（轻量本地运行） |
+| 部署 | Docker、Docker Compose、Nginx |
 
-## 分析模块
+## 🏗️ 工作流
 
-| 模块 | 内容 | 核心技术 |
-|------|------|---------|
-| 数据上传 & ETL | 多平台数据自动识别、质量检查、异常检测 | Pandas ETL、IQR |
-| 经营概览 | 核心指标、营收趋势、时段热力图、平台对比 | 统计分析、Plotly |
-| 商品分析 | 销量排行、品类占比、**关联规则挖掘** | Apriori、Lift分析 |
-| 用户分析 | **RFM分层** + K-Means聚类验证 | 特征工程、无监督学习 |
-| 智能预测 | Prophet时序预测 + Isolation Forest异常检测 | 时间序列、ML |
-| 分析报告 | 一键生成自然语言经营诊断报告 | 模板化报告生成 |
+```text
+上传订单数据
+      ↓
+字段识别与数据质量检查
+      ↓
+清洗、标准化与特征工程
+      ↓
+指标分析 ─ 商品关联规则 ─ RFM/K-Means ─ 营收预测 ─ 异常检测
+      ↓
+可视化看板与经营诊断报告
+```
 
-## 技术栈
+## 🚀 快速开始
 
-- **Web框架**: Streamlit
-- **数据处理**: Pandas, NumPy, SciPy
-- **机器学习**: Scikit-learn (K-Means, Isolation Forest)
-- **关联规则**: mlxtend (Apriori)
-- **时序预测**: Prophet (Meta)
-- **可视化**: Plotly
-- **业务模型**: RFM 用户分层模型
+### Docker（推荐）
 
-## 快速开始
+需要 Docker Engine 24+ 和 Docker Compose v2：
 
 ```bash
-# 1. 安装依赖
+git clone https://github.com/CXUN8888-eng/restaurant-analytics.git
+cd restaurant-analytics
+cp .env.example .env
+# 编辑 .env，至少替换 POSTGRES_PASSWORD 和 AUTH_SECRET
+docker compose up -d --build
+```
+
+启动后访问：
+
+- React 前端：<http://localhost:5173>
+- FastAPI 文档：<http://localhost:8000/docs>
+
+开发时如需前后端热更新：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+### 本机运行
+
+```bash
+# 安装 Python 依赖
+python -m venv .venv
+source .venv/bin/activate       # Windows：.venv\\Scripts\\activate
 pip install -r requirements.txt
 
-# 2. 生成模拟数据（可选，用于体验系统）
-python sample_data/generate_mock_data.py
+# 终端 1：后端
+uvicorn backend.main:app --reload --port 8000
 
-# 3. 启动应用
-streamlit run app.py
+# 终端 2：前端
+cd frontend
+npm ci
+npm run dev
 ```
 
-浏览器访问 `http://localhost:8501`
+更多部署、测试和故障排查说明见[项目部署](项目部署.md)、[开发指南](开发指南.md)和[运维与故障排查](运维与故障排查.md)。
 
-## 项目结构
+## 📁 项目结构
 
-```
+```text
 restaurant-analytics/
-├── app.py                     # Streamlit 主入口
-├── requirements.txt
-├── README.md
-│
-├── pages/                     # 各分析页面
-│   ├── 1_data_upload.py       # 数据上传 & ETL管道
-│   ├── 2_overview.py          # 经营概览看板
-│   ├── 3_product_analysis.py  # 商品 & 关联规则分析
-│   ├── 4_user_analysis.py     # RFM + K-Means 用户分析
-│   ├── 5_prediction.py        # 时序预测 & 异常检测
-│   └── 6_report.py            # 一键分析报告
-│
-├── src/                       # 核心分析逻辑（与UI解耦）
-│   ├── data_pipeline.py       # ETL: 加载→校验→清洗→异常检测
-│   ├── features.py            # 特征工程: RFM/时段/品类
-│   ├── models.py              # ML模型: Apriori/K-Means/Prophet/IF
-│   ├── analysis.py            # 统计分析: 指标计算
-│   ├── visualization.py       # Plotly 图表工厂
-│   └── report.py              # 自然语言报告生成
-│
-└── sample_data/               # 模拟数据
-    ├── generate_mock_data.py  # 数据生成器
-    ├── sample_orders.csv      # 订单明细
-    └── sample_customers.csv   # 顾客画像
+├── backend/                       # FastAPI 后端、认证和数据存储
+├── frontend/                      # React + Vite 前端
+├── src/                           # ETL、特征、模型、分析和可视化逻辑
+├── sample_data/                   # 模拟数据与数据生成器
+├── tests/                         # 后端和数据处理测试
+├── docker-compose.yml             # 完整部署配置
+├── docker-compose.dev.yml         # 开发热更新配置
+└── requirements.txt               # Python 依赖
 ```
 
-## 简历描述（建议）
+## 🧪 测试
 
-> **餐饮多平台经营数据分析系统**
->
-> - 设计并实现完整的数据分析管道（ETL + 特征工程 + 建模 + 可视化），支持美团/微信/饿了么等多平台订单数据
-> - 使用 Apriori 关联规则算法（Support/Confidence/Lift）挖掘菜品搭配规律，自动生成套餐建议
-> - 基于 RFM 模型实现用户分层（8类），结合 K-Means 聚类交叉验证，输出差异化运营策略
-> - 使用 Prophet 时间序列模型预测未来营收趋势，Isolation Forest 检测异常订单
-> - 集成一键经营诊断报告，将分析结果转化为自然语言 + 可执行经营建议
-> - 技术栈：Python、Streamlit、Pandas、Scikit-learn、Prophet、Plotly
+```bash
+pytest
+```
 
-## 面试讲解要点
+## 🔐 配置与数据安全
 
-参见各页面底部的「面试讲解要点」展开区域，每个分析模块都有详细的方法论阐述。
+- 不要提交 `.env`、数据库密码、`AUTH_SECRET` 或真实客户数据。
+- `.env.example` 只提供配置模板；部署时请生成新的强随机密钥。
+- `data/datasets/`、数据库和 Docker 数据卷属于运行时数据，不作为代码版本管理。
+- 项目内的 CSV 示例数据仅用于演示，请勿上传包含个人信息的生产数据。
+
+## 📚 文档
+
+- [开发指南](开发指南.md)：代码结构、开发环境和扩展流程
+- [项目部署](项目部署.md)：Docker、本机进程、远程访问和备份恢复
+- [API 接口](API接口.md)：认证、数据集和分析 API
+- [数据格式说明](数据格式说明.md)：上传字段、别名和清洗规则
+- [运维与故障排查](运维与故障排查.md)：日志、数据卷和常见问题
+
+## 📌 项目状态
+
+这是一个持续迭代中的个人项目。当前重点是完善分析指标、预测效果、数据权限和生产部署能力。欢迎通过 Issue 提出建议，但请先阅读文档并使用脱敏数据复现问题。
+
+## 📄 许可证与使用说明
+
+当前仓库未附带开源许可证。除 GitHub 平台为展示和 Fork 提供的必要权限外，源代码及文档默认保留全部权利；如需允许他人自由使用、修改和分发，请先选择并添加合适的开源许可证（例如 MIT）。

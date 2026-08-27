@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-restaurant_analytics}
+      POSTGRES_USER: ${POSTGRES_USER:-analytics}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-analytics_dev_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-analytics} -d ${POSTGRES_DB:-restaurant_analytics}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  api:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATASET_DIR: /app/data/datasets
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-analytics}:${POSTGRES_PASSWORD:-analytics_dev_password}@db:5432/${POSTGRES_DB:-restaurant_analytics}
+      AUTH_SECRET: ${AUTH_SECRET:-change-this-development-secret-32chars}
+    volumes:
+      - analytics-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+  web:
+    restart: unless-stopped
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+volumes:
+  analytics-data:
+  postgres-data:

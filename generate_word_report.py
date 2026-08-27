@@ -66,7 +66,7 @@ p('')
 
 link = doc.add_paragraph()
 link.alignment = WD_ALIGN_PARAGRAPH.CENTER
-link.add_run('restaurant-analytics-8fgygzvdk9b9edpxe4rpdc.streamlit.app').font.size = Pt(9)
+link.add_run('github.com/CXUN8888-eng/restaurant-analytics').font.size = Pt(9)
 
 p('')
 p('本手册按简历中5条核心职责逐条展开，每条配「面试怎么讲」和「可能追问」。')
@@ -74,16 +74,16 @@ p('本手册按简历中5条核心职责逐条展开，每条配「面试怎么�
 # ==========================================
 h('职责1：平台搭建与公网部署', 1)
 p('简历原文：', bold=True)
-q('使用 Python + Streamlit + Pandas + Scikit-learn 完成平台搭建与公网部署')
+q('使用 React + FastAPI + Python 数据分析栈完成平台搭建与 Docker 部署')
 
 p('')
 p('面试怎么讲：', bold=True)
-q('项目用 Streamlit 做 Web 框架，它是纯 Python 的，不需要写前端代码。分析逻辑写在 src 目录里，和数据展示分离。最后部署到 Streamlit Community Cloud，代码推 GitHub 之后自动部署，得到一个公网可以访问的网址。')
+q('项目采用 React + FastAPI 前后端分离架构。分析逻辑写在 src 目录，后端负责鉴权、数据集生命周期和 JSON API，前端负责交互式看板，最终通过 Docker Compose 部署。')
 
 p('')
 p('可能追问：', bold=True)
-p('为什么用 Streamlit 而不是 React/Vue？')
-q('项目重点是数据分析能力，不是前端工程。Streamlit 让我把精力放在算法上。需要复杂交互的话，后端分析逻辑可以复用。')
+p('为什么采用 React + FastAPI？')
+q('前后端分离便于实现登录、数据权限、复杂交互和独立部署，同时将分析逻辑与展示层解耦，后续可以复用 API 或扩展其他客户端。')
 
 p('项目结构是怎样的？')
 q('pages 目录放6个页面，src 目录放核心逻辑（数据管道、特征工程、模型、分析、可视化、报告），和页面解耦，方便测试和维护。')
@@ -164,7 +164,7 @@ doc.add_page_break()
 h('通用问题', 1)
 
 p('说说这个项目')
-q('商家从美团、饿了么、微信点单导出订单 CSV，上传后自动完成清洗、分析、建模、可视化，最后输出经营建议。做了5个分析模块：数据上传、经营概览、商品分析（含关联规则）、用户分析（含RFM分层）、营收预测与异常检测，最后有一键分析报告。用 Streamlit 做的，已部署到公网。')
+q('商家从美团、饿了么、微信点单导出订单 CSV，上传后自动完成清洗、分析、建模、可视化，最后输出经营建议。系统包含数据上传、经营概览、商品分析、用户分析、营收预测、异常检测和报告生成模块，采用 React + FastAPI 前后端分离架构。')
 
 p('')
 p('数据是真实的吗？')

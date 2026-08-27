@@ -132,7 +132,7 @@ add_table(
     [
         ('操作系统', 'Windows 11'),
         ('编程语言', 'Python 3.12'),
-        ('Web框架', 'Streamlit 1.28'),
+        ('Web框架', 'React + FastAPI'),
         ('数据处理', 'Pandas 2.0、NumPy 1.24'),
         ('科学计算', 'SciPy 1.11'),
         ('机器学习库', 'Scikit-learn 1.3'),
@@ -140,7 +140,7 @@ add_table(
         ('可视化工具', 'Plotly 5.17'),
         ('表格处理', 'openpyxl 3.1（Excel文件读写）'),
         ('开发工具', 'VS Code'),
-        ('部署平台', 'Streamlit Community Cloud / Hugging Face Spaces'),
+        ('部署平台', 'Docker Compose'),
     ],
 )
 
@@ -150,7 +150,7 @@ add_table(
 heading('三、系统架构与功能模块', 1)
 
 heading('3.1 系统总体架构', 2)
-para('本系统采用Streamlit Web框架搭建，整体架构分为三层：前端展示层（Streamlit Pages）、业务逻辑层（src模块）、数据存储层（CSV/Excel文件）。系统包含六大功能模块，覆盖数据分析的全链路流程。')
+para('本系统采用React + FastAPI前后端分离架构，整体由React展示层、FastAPI接口层、src分析逻辑层和PostgreSQL/数据集存储层组成。系统包含数据上传、经营概览、商品分析、用户分析、智能预测、异常检测和报告生成模块，覆盖数据分析的全链路流程。')
 
 add_table(
     ['模块', '功能', '核心技术'],
@@ -301,7 +301,7 @@ para('（5）从数据管道→特征工程→算法建模→可视化→智能�
 # 六、总结与展望
 # ============================================================
 heading('六、总结与展望', 1)
-para('本实验基于Python生态（Streamlit、Pandas、Scikit-learn、Plotly等），搭建了一套完整的餐饮经营数据分析系统，覆盖了数据预处理、特征工程、算法建模、可视化、报告生成的全链路流程。实验中实践了IQR异常检测、Apriori关联规则、RFM用户分层、K-Means聚类、随机森林回归、Isolation Forest异常检测等共6种数据分析与机器学习算法，并实现了多算法协同验证的分析策略。')
+para('本实验基于React、FastAPI和Python数据分析生态（Pandas、Scikit-learn、Plotly等），搭建了一套完整的餐饮经营数据分析系统，覆盖了数据预处理、特征工程、算法建模、可视化、报告生成的全链路流程。实验中实践了IQR异常检测、Apriori关联规则、RFM用户分层、K-Means聚类、随机森林回归、Isolation Forest异常检测等共6种数据分析与机器学习算法，并实现了多算法协同验证的分析策略。')
 para('通过本实验，加深了对数据挖掘、机器学习、时间序列分析等课程理论知识的理解，提升了将理论知识转化为工程实践的能力。')
 para('未来可从以下方向进一步改进：引入外部特征（天气、节假日、商圈活动）提升预测精度；接入NLP技术对用户评价进行情感分析；将离线CSV上传升级为实时API数据接入；增加更多评估指标和超参数调优策略。')
 
@@ -315,24 +315,17 @@ code = doc.add_paragraph()
 code.paragraph_format.first_line_indent = Cm(0)
 run = code.add_run('''
 restaurant-analytics/
-├── app.py                    # Streamlit主页面入口
-├── Dockerfile                # Docker容器配置
+├── backend/                  # FastAPI后端、认证和数据存储
+├── frontend/                 # React + Vite前端
+├── docker-compose.yml        # Docker Compose部署配置
 ├── requirements.txt          # Python依赖包列表
-├── pages/                    # 六大分析功能页面
-│   ├── 1_数据上传.py          # 数据上传与ETL管道
-│   ├── 2_经营概览.py          # 核心指标与趋势分析
-│   ├── 3_商品分析.py          # 关联规则与品类分析
-│   ├── 4_用户分析.py          # RFM分层与聚类验证
-│   ├── 5_智能预测.py          # 营收预测与异常检测
-│   └── 6_分析报告.py          # 一键诊断报告生成
 ├── src/                      # 核心算法与业务逻辑
 │   ├── data_pipeline.py      # ETL数据管道（加载/校验/清洗/检测）
 │   ├── features.py           # 特征工程（RFM/时间/品类特征）
 │   ├── models.py             # 机器学习模型（Apriori/K-Means/RF/IF）
 │   ├── analysis.py           # 统计分析与指标计算
 │   ├── visualization.py      # Plotly可视化图表工厂
-│   ├── report.py             # 自然语言报告生成
-│   └── nav_style.py          # 导航栏样式注入
+│   └── report.py             # 自然语言报告生成
 └── sample_data/              # 模拟数据与生成器
     ├── generate_mock_data.py # 数据生成器
     ├── sample_orders.csv     # 模拟订单数据

@@ -14,6 +14,38 @@ from scipy import stats
 from typing import Dict, Any
 
 
+def _prepare_analysis_dates(df_orders: pd.DataFrame) -> pd.DataFrame:
+    """将历史/旧版本数据集的日期统一为可排序的 ISO 字符串。
+
+    上传管道会在入库前完成标准化，但已经保存的旧数据集可能仍然包含
+    ``str``、``NaN`` 和不同日期格式的混合值。分析接口再次做轻量兜底，
+    确保单个异常单元格不会让整个概览接口返回 500。
+    """
+    frame = df_orders.copy()
+    source = frame["order_time"] if "order_time" in frame.columns else frame.get("date")
+    if source is None:
+        return frame
+
+    parsed = pd.to_datetime(source, errors="coerce", format="mixed")
+    numeric = pd.to_numeric(source, errors="coerce")
+    excel_mask = parsed.isna() & numeric.between(1, 100000)
+    if excel_mask.any():
+        parsed.loc[excel_mask] = pd.to_datetime(
+            numeric.loc[excel_mask], unit="D", origin="1899-12-30", errors="coerce"
+        )
+
+    valid = parsed.dropna()
+    fallback = (
+        valid.sort_values().iloc[len(valid) // 2].normalize()
+        if not valid.empty
+        else pd.Timestamp.now().normalize()
+    )
+    parsed = parsed.fillna(fallback)
+    frame["order_time"] = parsed
+    frame["date"] = parsed.dt.strftime("%Y-%m-%d")
+    return frame
+
+
 def compute_overview_metrics(df_orders: pd.DataFrame) -> Dict[str, Any]:
     """
     计算经营概览核心指标
@@ -31,8 +63,7 @@ def compute_overview_metrics(df_orders: pd.DataFrame) -> Dict[str, Any]:
         - yesterday_revenue: 昨日营收
         - dod_change: 日环比(%)
     """
-    if "date" not in df_orders.columns:
-        df_orders["date"] = pd.to_datetime(df_orders["order_time"]).dt.strftime("%Y-%m-%d")
+    df_orders = _prepare_analysis_dates(df_orders)
 
     # 按订单聚合（不去重商品行）
     order_level = df_orders.groupby("order_id").agg(
@@ -168,8 +199,7 @@ def compute_trend_analysis(df_orders: pd.DataFrame) -> pd.DataFrame:
     """
     日营收趋势 + 环比
     """
-    if "date" not in df_orders.columns:
-        df_orders["date"] = pd.to_datetime(df_orders["order_time"]).dt.strftime("%Y-%m-%d")
+    df_orders = _prepare_analysis_dates(df_orders)
 
     daily = df_orders.groupby("date").agg(
         revenue=("actual_amount", "sum"),

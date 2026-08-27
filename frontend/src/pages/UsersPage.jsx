@@ -1,0 +1,6 @@
+import { BarList, Card, DataTable, Metric, num } from '../components/ui'
+
+export default function UsersPage({ users }) {
+  const recall = users?.rfm?.filter(row => ['重要挽留', '流失高价值'].includes(row.segment)).length || 0
+  return <main><section className="metrics"><Metric label="用户总数" value={num(users?.rfm?.length)} detail="参与消费的顾客" /><Metric label="用户分层" value={num(users?.segments?.length)} detail="RFM 价值分群" /><Metric label="聚类数量" value={num(users?.clusters?.length)} detail="K-Means 验证" /><Metric label="重点召回" value={num(recall)} detail="高价值流失风险" accent /></section><section className="grid-2"><Card title="RFM 用户分层" subtitle="最近消费、频次和金额"><BarList rows={users?.segments} labelKey="segment" valueKey="count" /></Card><Card title="聚类中心" subtitle="K-Means 交叉验证"><DataTable rows={users?.clusters} columns={[["cluster", "聚类"], ["recency", "Recency"], ["frequency", "Frequency"], ["monetary", "Monetary"], ["count", "人数"]]} /></Card></section><section className="grid-2"><Card title="用户价值明细" subtitle="RFM 特征与运营策略"><DataTable rows={users?.rfm} columns={[["customer_id", "用户"], ["recency", "最近消费"], ["frequency", "频次"], ["monetary", "金额"], ["RFM_score", "总分"], ["segment", "分层"], ["strategy", "策略"]]} /></Card><Card title="肘部法则" subtitle="用 SSE 辅助选择 K 值"><DataTable rows={users?.elbow} columns={[["k", "聚类数 K"], ["inertia", "SSE"]]} /></Card></section></main>
+}

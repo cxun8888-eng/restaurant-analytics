@@ -107,6 +107,9 @@ def run_kmeans_clustering(rfm_df: pd.DataFrame, n_clusters: int = 4) -> Tuple[pd
     from sklearn.preprocessing import StandardScaler
     from sklearn.cluster import KMeans
 
+    if rfm_df.empty:
+        return rfm_df.copy(), {"centers": pd.DataFrame(), "inertia": None}
+    n_clusters = max(1, min(int(n_clusters), len(rfm_df)))
     features = rfm_df[["recency", "frequency", "monetary"]].copy()
 
     # 标准化
@@ -356,8 +359,15 @@ def run_isolation_forest(df_orders: pd.DataFrame) -> pd.DataFrame:
     X = order_features[["total_amount", "item_count", "total_quantity", "avg_unit_price", "discount_total"]].copy()
     X = X.fillna(0)
 
+    # 极小数据集无法稳定估计异常比例，直接返回正常结果。
+    if len(order_features) < 5:
+        order_features["anomaly_label"] = 1
+        order_features["anomaly_score"] = 0.0
+        order_features["is_anomaly"] = False
+        return order_features
+
     # 训练
-    iso = IsolationForest(contamination=0.05, random_state=42)
+    iso = IsolationForest(contamination=min(0.05, max(1 / len(order_features), 0.01)), random_state=42)
     order_features["anomaly_label"] = iso.fit_predict(X)
     order_features["anomaly_score"] = iso.score_samples(X)
 
@@ -377,6 +387,9 @@ def find_optimal_k(rfm_df: pd.DataFrame, max_k: int = 8) -> pd.DataFrame:
     from sklearn.preprocessing import StandardScaler
     from sklearn.cluster import KMeans
 
+    if len(rfm_df) < 2:
+        return pd.DataFrame(columns=["k", "inertia"])
+    max_k = max(1, min(int(max_k), len(rfm_df)))
     features = rfm_df[["recency", "frequency", "monetary"]]
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(features)

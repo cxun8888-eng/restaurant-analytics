@@ -48,10 +48,16 @@ def build_rfm_features(
     ).reset_index()
 
     # -- 打分（按三分位数，1=差, 2=中, 3=好）--
-    # Recency 越小越好，所以分位数反过来
-    rfm["R_score"] = pd.qcut(rfm["recency"], q=3, labels=[3, 2, 1]).astype(int)
-    rfm["F_score"] = pd.qcut(rfm["frequency"].rank(method="first"), q=3, labels=[1, 2, 3]).astype(int)
-    rfm["M_score"] = pd.qcut(rfm["monetary"].rank(method="first"), q=3, labels=[1, 2, 3]).astype(int)
+    # 使用排名百分位而不是 qcut，避免小数据集或大量相同值导致分箱失败。
+    def tertile_score(series: pd.Series, reverse: bool = False) -> pd.Series:
+        ranks = series.rank(method="first", ascending=True, pct=True)
+        scores = np.ceil(ranks * 3).clip(1, 3).astype(int)
+        return (4 - scores) if reverse else scores
+
+    # Recency 越小越好，所以分数反过来。
+    rfm["R_score"] = tertile_score(rfm["recency"], reverse=True)
+    rfm["F_score"] = tertile_score(rfm["frequency"])
+    rfm["M_score"] = tertile_score(rfm["monetary"])
 
     # -- 总分 --
     rfm["RFM_score"] = rfm["R_score"] + rfm["F_score"] + rfm["M_score"]
