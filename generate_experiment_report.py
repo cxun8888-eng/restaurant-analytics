@@ -82,7 +82,7 @@ for _ in range(4):
 
 title_p = doc.add_paragraph()
 title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = title_p.add_run('餐饮多平台经营数据分析系统')
+run = title_p.add_run('懂单儿 RODAS 餐饮经营数据分析系统')
 run.bold = True; run.font.size = Pt(26)
 run.font.name = '黑体'
 

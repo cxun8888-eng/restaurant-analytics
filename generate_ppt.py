@@ -1,4 +1,4 @@
-"""生成项目展示PPT — 餐饮多平台经营数据分析系统"""
+"""生成项目展示PPT — 懂单儿 RODAS 餐饮经营数据分析系统"""
 
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -88,7 +88,7 @@ add_bg(slide, C_DARK)
 # 装饰线
 add_shape(slide, 2, 2.8, 9.3, 0.03, C_PRIMARY)
 
-add_text_box(slide, 2, 1.8, 9.3, 0.8, '餐饮多平台经营数据分析系统', font_size=40, color=C_WHITE, bold=True, align=PP_ALIGN.CENTER)
+add_text_box(slide, 2, 1.8, 9.3, 0.8, '懂单儿 RODAS', font_size=40, color=C_WHITE, bold=True, align=PP_ALIGN.CENTER)
 add_text_box(slide, 2, 3.0, 9.3, 0.6, '从CSV上传到智能经营建议 — 全链路数据闭环', font_size=18, color=C_GRAY, align=PP_ALIGN.CENTER)
 add_text_box(slide, 2, 4.0, 9.3, 0.5, '数据科学与大数据技术 · 个人项目', font_size=14, color=C_WHITE, align=PP_ALIGN.CENTER)
 add_text_box(slide, 2, 5.2, 9.3, 0.4, 'React | FastAPI | Python | Pandas | Scikit-learn | Plotly', font_size=12, color=C_GRAY, align=PP_ALIGN.CENTER)

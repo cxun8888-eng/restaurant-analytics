@@ -100,7 +100,7 @@ add_bg(slide)
 shape = slide.shapes.add_shape(1, Inches(2), Inches(2.5), Inches(9.3), Inches(0.03))
 shape.fill.solid(); shape.fill.fore_color.rgb = C_BLUE; shape.line.fill.background()
 
-tb(slide, 2, 1.2, 9.3, 0.8, '餐饮多平台经营数据分析系统', size=38, color=C_TEXT, bold=True, align=PP_ALIGN.CENTER)
+tb(slide, 2, 1.2, 9.3, 0.8, '懂单儿 RODAS', size=38, color=C_TEXT, bold=True, align=PP_ALIGN.CENTER)
 tb(slide, 2, 2.8, 9.3, 0.5, '从数据到决策：全链路经营分析平台', size=16, color=C_GRAY, align=PP_ALIGN.CENTER)
 tb(slide, 2, 4.5, 9.3, 0.4, '数据科学与大数据技术 · 个人项目', size=14, color=C_BLUE, align=PP_ALIGN.CENTER)
 tb(slide, 2, 5.2, 9.3, 0.3, 'React | FastAPI | Python | Pandas | Scikit-learn | Plotly', size=11, color=C_GRAY, align=PP_ALIGN.CENTER)
