@@ -57,7 +57,7 @@ docker compose up -d --build
 
 启动后访问：
 
-- React 前端：<http://localhost:5173>
+- React 前端：<http://localhost:4815>
 - FastAPI 文档：<http://localhost:8000/docs>
 
 开发时如需前后端热更新：

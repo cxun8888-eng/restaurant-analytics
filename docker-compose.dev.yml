@@ -42,7 +42,7 @@ services:
       - ./frontend/index.html:/app/index.html
       - ./frontend/vite.config.js:/app/vite.config.js
     ports:
-      - "5173:5173"
+      - "4815:4815"
     environment:
       VITE_API_URL: http://localhost:8000/api
       CHOKIDAR_USEPOLLING: "true"
