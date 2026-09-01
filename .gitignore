@@ -8,6 +8,9 @@ venv/
 .DS_Store
 frontend/node_modules/
 frontend/dist/
+.tools/
+.wrangler/
+artifacts/
 .playwright-cli/
 .pytest_cache/
 data/datasets/

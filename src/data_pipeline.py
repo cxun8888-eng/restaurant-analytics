@@ -32,15 +32,21 @@ class DataPipeline:
         "order_time": ["order_time", "date", "datetime", "created_at", "下单时间", "下单日期", "交易时间", "交易日期", "订单日期", "结算日期", "结算日", "营业日期", "orderTime", "时间", "日期", "支付日期", "pay_time", "支付时间", "完成时间", "成交时间"],
         "customer_id": ["customer_id", "用户编号", "客户编号", "会员编号", "顾客编号", "customerId", "user_id", "openid", "会员id"],
         "product_name": ["product_name", "商品名称", "商品", "菜品名称", "菜品", "品名", "项目名称", "food_name", "productName", "item_name"],
-        "category": ["category", "品类", "分类", "商品分类", "菜品分类", "product_category", "category_name"],
+        "category": ["category", "品类", "分类", "商品分类", "菜品分类", "product_category", "category_name", "cuisine_type", "菜系", "菜系类型"],
         "quantity": ["quantity", "数量", "销量", "件数", "qty", "num", "count"],
         "unit_price": ["unit_price", "单价", "售价", "商品单价", "price", "unitPrice"],
-        "total_amount": ["total_amount", "transaction_amount", "sales_amount", "总金额", "订单金额", "订单总额", "交易金额", "成交金额", "销售额", "营业额", "销售收入", "收入", "实收", "应付金额", "原价", "total", "amount", "revenue", "gmv"],
+        "total_amount": ["total_amount", "transaction_amount", "sales_amount", "cost_of_the_order", "order_cost", "cost", "总金额", "订单金额", "订单总额", "交易金额", "成交金额", "销售额", "营业额", "销售收入", "收入", "实收", "应付金额", "原价", "total", "amount", "revenue", "gmv"],
         "discount": ["discount", "优惠金额", "折扣金额", "discount_amount", "立减", "红包", "优惠"],
         "actual_amount": ["actual_amount", "实付金额", "实收金额", "实际支付", "支付金额", "到账金额", "actualAmount", "pay_amount", "paid_amount"],
         "refund_amount": ["refund_amount", "退款金额", "退款", "refund", "refundAmount"],
         "platform": ["platform", "平台", "来源平台", "渠道", "source", "来源", "platform_name"],
         "status": ["status", "状态", "订单状态", "交易状态", "order_status"],
+        # 这些字段在不少平台报表中有业务价值，但不应冒充核心订单字段。
+        "restaurant_name": ["restaurant_name", "餐厅名称", "餐馆名称", "门店名称", "店铺名称", "restaurant"],
+        "weekday_label": ["day_of_the_week", "weekday", "week_day", "星期", "星期几", "营业日类型", "工作日类型"],
+        "rating": ["rating", "评分", "星级", "用户评分", "score"],
+        "preparation_time": ["food_preparation_time", "preparation_time", "备餐时长", "出餐时长", "制作时长"],
+        "delivery_duration": ["delivery_time", "delivery_duration", "配送时长", "配送时间", "送餐时长"],
     }
 
     FIELD_LABELS = {
@@ -48,6 +54,8 @@ class DataPipeline:
         "total_amount": "订单金额", "customer_id": "顾客编号", "category": "商品分类",
         "quantity": "数量", "unit_price": "单价", "discount": "优惠金额",
         "actual_amount": "实付金额", "refund_amount": "退款金额", "platform": "平台", "status": "订单状态",
+        "restaurant_name": "餐厅名称", "weekday_label": "星期/营业日", "rating": "评分",
+        "preparation_time": "备餐时长", "delivery_duration": "配送时长",
     }
 
     def __init__(self):
@@ -56,6 +64,7 @@ class DataPipeline:
         self.column_mapping = []
         self.raw_columns = []
         self.raw_sample = []
+        self.raw_frame = pd.DataFrame()
 
     def run(self, file_bytes: bytes, filename: str, forced_mapping: Optional[Dict[str, object]] = None) -> Tuple[pd.DataFrame, Dict]:
         """
@@ -78,8 +87,9 @@ class DataPipeline:
 
         # 1. 加载
         df_raw = self._load_data(file_bytes, filename)
+        self.raw_frame = df_raw.copy()
         self.raw_columns = [str(column) for column in df_raw.columns]
-        self.raw_sample = df_raw.head(5).where(pd.notna(df_raw.head(5)), None).to_dict(orient="records")
+        self.raw_sample = self._representative_sample(df_raw)
 
         # 2. 列名标准化
         df = self._normalize_columns(df_raw, forced_mapping=forced_mapping)
@@ -112,6 +122,21 @@ class DataPipeline:
             self.quality_report["date_range"] = f"{dates.min()} ~ {dates.max()}"
 
         return df, self.quality_report
+
+    @staticmethod
+    def _representative_sample(df: pd.DataFrame, limit: int = 20) -> list[dict]:
+        """Return deterministic samples from across a file for AI inspection.
+
+        The complete frame is still processed locally.  Sampling evenly across
+        the file avoids making the first few rows the sole source of truth when
+        exports contain headers, blank sections, or multiple data blocks.
+        """
+        if df.empty:
+            return []
+        count = min(len(df), max(1, limit))
+        positions = np.linspace(0, len(df) - 1, count, dtype=int)
+        sample = df.iloc[sorted(set(int(position) for position in positions))]
+        return sample.where(pd.notna(sample), None).to_dict(orient="records")
 
     def _load_data(self, file_bytes: bytes, filename: str) -> pd.DataFrame:
         """加载 CSV 或 Excel 文件"""
@@ -208,6 +233,11 @@ class DataPipeline:
             "refund_amount": ["退款", "refund"],
             "platform": ["平台", "渠道", "来源", "platform", "source"],
             "status": ["状态", "订单状态", "交易状态", "status"],
+            "restaurant_name": ["餐厅", "门店", "店铺", "restaurant"],
+            "weekday_label": ["星期", "工作日", "周末", "weekday", "week"],
+            "rating": ["评分", "星级", "rating", "score"],
+            "preparation_time": ["备餐", "出餐", "制作", "preparation"],
+            "delivery_duration": ["配送", "送餐", "delivery"],
         }[field]
 
         best = None
@@ -226,7 +256,7 @@ class DataPipeline:
             unique_ratio = sample.nunique(dropna=True) / max(len(sample), 1)
             if field == "order_time":
                 type_score = date_ratio
-            elif field in {"total_amount", "actual_amount", "refund_amount", "discount", "unit_price", "quantity"}:
+            elif field in {"total_amount", "actual_amount", "refund_amount", "discount", "unit_price", "quantity", "rating", "preparation_time", "delivery_duration"}:
                 type_score = numeric_ratio
             elif field in {"order_id", "customer_id"}:
                 type_score = min(1.0, text_ratio * .65 + unique_ratio * .35)
@@ -273,6 +303,17 @@ class DataPipeline:
                 excluded_terms = ("数量", "销量", "件数", "qty", "quantity", "单价", "折扣", "discount")
                 for column in df.columns:
                     name = self._normalize_column_name(column)
+                    # 订单号、顾客号等字段通常也是数字型，但绝不能被当作金额。
+                    if column in {"order_id", "customer_id", "order_time", "product_name", "category", "platform", "status"}:
+                        continue
+                    # CSV 导出的行号（Unnamed: 0）只是技术索引，不是业务金额。
+                    if name.startswith("unnamed"):
+                        continue
+                    # 派单时间、日期编码和运单字段虽然是数字，也不能兜底为金额。
+                    if name in {"dt", "date", "datetime", "timestamp"} or any(term in name for term in ("dispatch", "waybill", "courier", "rider", "派单", "运单", "骑手")):
+                        continue
+                    if any(term in name for term in ("订单号", "订单编号", "流水号", "客户号", "顾客号", "用户号", "customerid", "userid", "orderid")):
+                        continue
                     if any(term in name for term in excluded_terms):
                         continue
                     sample = df[column].dropna().head(200)
@@ -353,6 +394,9 @@ class DataPipeline:
             "actual_amount": "实付金额",
             "discount": "优惠金额",
             "refund_amount": "退款金额",
+            "rating": "评分",
+            "preparation_time": "备餐时长",
+            "delivery_duration": "配送时长",
         }
         for col, name in numeric_checks.items():
             if col in df.columns:

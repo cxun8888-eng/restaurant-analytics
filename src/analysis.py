@@ -46,6 +46,22 @@ def _prepare_analysis_dates(df_orders: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
+def _safe_round(value: Any, digits: int = 2, default: float = 0.0) -> float:
+    """Round pandas/numpy statistics without leaking ``pd.NA`` into responses.
+
+    Nullable pandas dtypes return ``pd.NA`` for statistics that need more than
+    one observation (for example, standard deviation of a one-day series).
+    Those values must be converted to a JSON-safe number before the API/report
+    layer formats them.
+    """
+    try:
+        if pd.isna(value):
+            return default
+        return round(float(value), digits)
+    except (TypeError, ValueError):
+        return default
+
+
 def compute_overview_metrics(df_orders: pd.DataFrame) -> Dict[str, Any]:
     """
     计算经营概览核心指标
@@ -101,11 +117,14 @@ def compute_overview_metrics(df_orders: pd.DataFrame) -> Dict[str, Any]:
     # 统计五数（按日营收）
     daily_revenue = order_level.groupby("date")["actual_amount"].sum()
     revenue_stats = {
-        "mean": round(daily_revenue.mean(), 2),
-        "median": round(daily_revenue.median(), 2),
-        "std": round(daily_revenue.std(), 2),
-        "skewness": round(float(stats.skew(daily_revenue.dropna())), 2),
-        "kurtosis": round(float(stats.kurtosis(daily_revenue.dropna())), 2),
+        "mean": _safe_round(daily_revenue.mean()),
+        "median": _safe_round(daily_revenue.median()),
+        # pandas' nullable Float64 returns pd.NA when there is only one day.
+        "std": _safe_round(daily_revenue.std()),
+        # A single observation has no measurable skew/kurtosis; expose 0 so
+        # report formatting and chart consumers receive a stable numeric type.
+        "skewness": _safe_round(stats.skew(daily_revenue.dropna()), default=0.0),
+        "kurtosis": _safe_round(stats.kurtosis(daily_revenue.dropna()), default=0.0),
     }
 
     return {

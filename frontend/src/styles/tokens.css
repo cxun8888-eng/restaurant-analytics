@@ -1,0 +1,41 @@
+/* 全站设计令牌：页面只引用语义变量，不再各自定义字号和卡片尺度。 */
+:root {
+  --type-page-title: clamp(42px, 3.3vw, 54px);
+  --type-hero-title: clamp(28px, 2.45vw, 36px);
+  --type-card-title: 18px;
+  --type-item-title: 14px;
+  --type-body: 13px;
+  --type-meta: 11px;
+  --type-label: 10px;
+  --type-number: 25px;
+  --space-page-section: 16px;
+  --card-padding: 24px;
+  --card-radius: 12px;
+  --tone-danger: #bd6354;
+  --tone-danger-soft: #fff0eb;
+  --tone-warning: #c59b43;
+  --tone-warning-soft: #fff5dc;
+  --tone-ok: #4b806d;
+  --tone-ok-soft: #edf5f0;
+  /* 兼容旧页面选择器；数值只在本文件维护。 */
+  --ui-title-size: var(--type-page-title);
+  --ui-hero-title-size: var(--type-hero-title);
+  --ui-card-title-size: var(--type-card-title);
+  --ui-item-title-size: var(--type-item-title);
+  --ui-body-size: var(--type-body);
+  --ui-meta-size: var(--type-meta);
+  --ui-label-size: var(--type-label);
+  --ui-number-size: var(--type-number);
+  --ui-card-padding: var(--card-padding);
+  --ui-card-radius: var(--card-radius);
+  --workspace-gap: var(--space-page-section);
+  --workspace-radius: var(--card-radius);
+}
+
+@media (min-width: 1600px) {
+  :root { --type-card-title: 19px; --type-item-title: 15px; --type-body: 14px; --type-meta: 12px; --type-label: 11px; --type-number: 27px; --card-padding: 28px; }
+}
+
+@media (max-width: 650px) {
+  :root { --type-page-title: 38px; --type-hero-title: 28px; --type-card-title: 16px; --type-item-title: 13px; --type-body: 12px; --type-meta: 10px; --type-label: 9px; --type-number: 20px; --card-padding: 18px; --card-radius: 10px; }
+}

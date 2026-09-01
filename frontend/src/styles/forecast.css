@@ -1,0 +1,31 @@
+.forecast-metric-row .is-clean { border-left-color: var(--sage); background: color-mix(in srgb, var(--sage) 7%, var(--card)); }
+.forecast-metric-row .is-clean strong { font-size: var(--type-item-title); }
+.forecast-model-card { margin-bottom: var(--space-page-section); padding: var(--card-padding); background: var(--card); border: 1px solid var(--line); border-radius: var(--card-radius); box-shadow: 5px 5px 0 rgba(25,27,32,.03); }
+.forecast-model-head { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 28px; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.forecast-model-head > div:first-child > span { color: var(--sage); font: var(--type-label) "SF Mono", monospace; letter-spacing: .11em; }
+.forecast-model-head h3 { margin: 7px 0 0; color: var(--ink); font-size: var(--type-card-title); }
+.forecast-model-head p { margin: 7px 0 0; color: var(--muted); font-size: var(--type-meta); line-height: 1.6; }
+.forecast-confidence { display: grid; min-height: 92px; align-content: center; justify-items: center; padding: 12px; background: var(--tone-ok-soft); border: 1px solid color-mix(in srgb, var(--sage) 28%, var(--line)); border-radius: 9px; text-align: center; }
+.forecast-confidence.medium { background: var(--tone-warning-soft); border-color: color-mix(in srgb, var(--tone-warning) 33%, var(--line)); }
+.forecast-confidence.low { background: var(--tone-danger-soft); border-color: color-mix(in srgb, var(--tone-danger) 30%, var(--line)); }
+.forecast-confidence small, .forecast-confidence span { color: var(--muted); font-size: var(--type-label); }
+.forecast-confidence strong { margin: 3px 0; color: var(--sage); font: 750 var(--type-number) "SF Mono", monospace; }
+.forecast-confidence.medium strong { color: #94732f; }.forecast-confidence.low strong { color: var(--tone-danger); }
+.forecast-model-table { margin-top: 14px; }
+.forecast-model-table-head, .forecast-model-row { display: grid; grid-template-columns: minmax(220px, .85fr) minmax(300px, 1.3fr) 100px; gap: 18px; align-items: center; }
+.forecast-model-table-head { padding: 0 14px 8px; color: var(--muted); font-size: var(--type-label); }
+.forecast-model-row { min-height: 64px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.forecast-model-row.is-selected { margin: 0 -5px; padding-inline: 19px; background: color-mix(in srgb, var(--sage) 7%, var(--card)); border-radius: 8px; }
+.forecast-model-row > span:first-child b, .forecast-model-row > span:first-child small { display: block; }
+.forecast-model-row > span:first-child b { color: var(--ink); font-size: var(--type-item-title); }
+.forecast-model-row > span:first-child small { margin-top: 3px; color: var(--muted); font-size: var(--type-label); }
+.forecast-model-error { position: relative; display: flex; height: 28px; align-items: center; overflow: hidden; background: color-mix(in srgb, var(--sage) 8%, var(--card)); border-radius: 6px; }
+.forecast-model-error i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--sage) 30%, transparent); border-radius: inherit; }
+.forecast-model-row:not(.is-selected) .forecast-model-error i { background: color-mix(in srgb, var(--muted) 18%, transparent); }
+.forecast-model-error b { position: relative; z-index: 1; margin-left: 10px; color: var(--ink); font: 650 var(--type-meta) "SF Mono", monospace; }
+.forecast-model-row > span:last-child { color: var(--muted); font-size: var(--type-meta); text-align: right; }
+.forecast-model-row.is-selected > span:last-child { color: var(--sage); font-weight: 700; }
+.forecast-model-note { display: grid; grid-template-columns: 190px 1fr; gap: 15px; margin-top: 13px; padding: 13px 15px; background: color-mix(in srgb, var(--sage) 5%, var(--card)); border-radius: 8px; }
+.forecast-model-note strong { color: var(--ink); font-size: var(--type-meta); }
+.forecast-model-note p { margin: 0; color: var(--muted); font-size: var(--type-meta); line-height: 1.6; }
+@media (max-width: 750px) { .forecast-model-head { grid-template-columns: 1fr; }.forecast-confidence { justify-items: start; text-align: left; }.forecast-model-table-head { display: none; }.forecast-model-row { grid-template-columns: 1fr; gap: 8px; }.forecast-model-row > span:last-child { text-align: left; }.forecast-model-note { grid-template-columns: 1fr; } }

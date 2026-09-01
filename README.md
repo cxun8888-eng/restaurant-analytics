@@ -63,7 +63,7 @@ docker compose up -d --build
 开发时如需前后端热更新：
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml up -d --build --remove-orphans
 ```
 
 ### 本机运行

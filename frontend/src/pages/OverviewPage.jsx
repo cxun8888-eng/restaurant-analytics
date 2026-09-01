@@ -55,7 +55,7 @@ export default function OverviewPage({ overview }) {
         <div className="overview-trend-note"><span><i className="trend-dot" />每日营收</span><span><i className="trend-line" />趋势方向</span><b>{metrics.dod_change >= 0 ? '↗' : '↘'} {pct(Math.abs(metrics.dod_change))} <small>最近一天变化</small></b></div>
       </Card>
       <Card className="overview-reading-card" title="今天先看什么" subtitle="概览页不展开细节，只把下一步入口交给对应模块。">
-        <div className="overview-reading-list"><a href="#products"><span className="reading-index">01</span><span><strong>商品分析</strong><small>确认营收变化是否由少数商品带动</small></span><b>→</b></a><a href="#users"><span className="reading-index">02</span><span><strong>用户分析</strong><small>查看订单变化背后的顾客结构</small></span><b>→</b></a><a href="#forecast"><span className="reading-index">03</span><span><strong>智能预测</strong><small>判断当前节奏能否延续到未来</small></span><b>→</b></a><a href="#report"><span className="reading-index">04</span><span><strong>分析报告</strong><small>获取异常订单与经营建议的完整解释</small></span><b>→</b></a></div>
+        <div className="overview-reading-list"><a href="#products"><span className="reading-index">01</span><span><strong>商品分析</strong><small>确认营收变化是否由少数商品带动</small></span><b>→</b></a><a href="#users"><span className="reading-index">02</span><span><strong>用户分析</strong><small>查看订单变化背后的顾客结构</small></span><b>→</b></a><a href="#anomalies"><span className="reading-index">03</span><span><strong>异常诊断</strong><small>确认偏离常规的订单是否需要处理</small></span><b>→</b></a><a href="#forecast"><span className="reading-index">04</span><span><strong>智能预测</strong><small>判断当前节奏能否延续到未来</small></span><b>→</b></a><a href="#report"><span className="reading-index">05</span><span><strong>分析报告</strong><small>获取经营风险与行动建议的完整解释</small></span><b>→</b></a></div>
       </Card>
     </section>
 

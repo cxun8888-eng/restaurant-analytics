@@ -20,6 +20,8 @@
 | POST | `/api/auth/login` | 否 | 登录并建立会话 |
 | GET | `/api/auth/me` | 是 | 获取当前用户 |
 | POST | `/api/auth/logout` | 否 | 清除会话 Cookie |
+| POST | `/api/datasets/inspect` | 是 | 上传临时文件、生成结构画像和字段建议，不保存正式数据集 |
+| POST | `/api/datasets/confirm` | 是 | 提交用户确认的字段映射并保存正式数据集 |
 | POST | `/api/datasets/upload` | 是 | 上传、清洗并保存数据集 |
 | GET | `/api/datasets/{id}/quality` | 是 | 获取数据质量报告 |
 | GET | `/api/datasets/{id}/preview` | 是 | 预览清洗后的数据 |
@@ -64,7 +66,26 @@ curl -b cookies.txt -X POST http://localhost:8000/api/auth/logout
 
 ### 上传
 
-`POST /api/datasets/upload`，使用 `multipart/form-data`，字段名必须是 `file`。可选字段 `ai_config` 为 JSON 字符串，传入已配置的 AI 服务商后，系统只会在规则识别置信度不足时发送表头和前 5 行样例进行辅助判断。
+完整交互流程使用两个接口。第一步 `POST /api/datasets/inspect` 使用 `multipart/form-data`，字段名必须是 `file`；可选字段 `ai_config` 为 JSON 字符串。后端会读取完整文件并生成列类型、非空率、数字/日期解析率等结构画像，只向 AI 发送结构画像和最多 20 行代表性样例。该步骤只保存一个短期临时检查，不会生成正式数据集。
+
+```bash
+curl -b cookies.txt -F 'file=@sample_data/sample_orders.csv' \
+  http://localhost:8000/api/datasets/inspect
+```
+
+返回的 `inspection_id`、`columns`、`profile`、`sample_rows`、`rule_mapping` 和 `suggestion` 用于前端展示字段确认。配置 AI 时，`suggestion.header_translations` 会为每个原始表头返回中文释义、置信度和翻译依据；原始列名不会被改写。`suggestion` 还可能包含 `dataset_type`、`mapping`、`ignored_columns` 和 `warnings`。
+
+第二步 `POST /api/datasets/confirm` 提交用户最终选择的映射。`field` 为空表示忽略该原始列：
+
+```bash
+curl -b cookies.txt -H 'Content-Type: application/json' \
+  -d '{"inspection_id":"检查接口返回的ID","mapping":[{"source":"订单号","field":"order_id"},{"source":"下单时间","field":"order_time"},{"source":"商品名称","field":"product_name"},{"source":"订单金额","field":"total_amount"}]}' \
+  http://localhost:8000/api/datasets/confirm
+```
+
+临时检查默认保留 30 分钟，且按当前登录账号隔离。确认成功后返回正式 `dataset_id`。
+
+兼容旧脚本的 `POST /api/datasets/upload` 仍然可用，会直接清洗并保存数据集；配置 AI 时同样会发送表头、结构画像和代表性样例，但不会经过前端确认步骤。
 
 ```bash
 curl -b cookies.txt -F 'file=@sample_data/sample_orders.csv' \
@@ -98,7 +119,7 @@ curl -b cookies.txt \
 - `GET /api/datasets/{id}/quality` 返回文件名及 `quality` 对象。
 - `GET /api/datasets/{id}/preview?limit=50` 返回 `{ "columns": [], "rows": [] }`；`limit` 范围为 1–200。
 
-质量对象可能包含：`raw_rows`、`clean_rows`、`total_orders`、`date_range`、`issues`、`anomalies`、`duplicates_removed`、`missing_customer_id`、`column_mapping`、`ai_assistance`。AI 不可用时会自动回退到规则识别，不会阻止上传。
+质量对象可能包含：`raw_rows`、`clean_rows`、`total_orders`、`date_range`、`issues`、`anomalies`、`duplicates_removed`、`missing_customer_id`、`column_mapping`、`ai_assistance`、`dataset_type`、`analysis_gate`、`mapping_review`。AI 不可用时会自动回退到规则识别；如果文件被判断为非餐饮经营报表或缺少可靠订单金额，可以完成预检但不能确认保存正式数据集。
 
 ## 分析接口
 

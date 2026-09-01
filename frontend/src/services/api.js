@@ -7,10 +7,10 @@ async function request(path, options = {}) {
   return payload
 }
 
-export function uploadDataset(file, onProgress, aiConfig = null) {
+function uploadMultipart(path, file, onProgress, aiConfig = null) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `${API}/datasets/upload`)
+    xhr.open('POST', `${API}${path}`)
     xhr.withCredentials = true
     xhr.responseType = 'json'
     xhr.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(Math.round(event.loaded / event.total * 100)) }
@@ -25,6 +25,20 @@ export function uploadDataset(file, onProgress, aiConfig = null) {
   })
 }
 
+export function inspectDataset(file, onProgress, aiConfig = null) {
+  return uploadMultipart('/datasets/inspect', file, onProgress, aiConfig)
+}
+
+export function uploadDataset(file, onProgress, aiConfig = null) {
+  return uploadMultipart('/datasets/upload', file, onProgress, aiConfig)
+}
+
+export const confirmDataset = (inspectionId, mapping) => request('/datasets/confirm', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ inspection_id: inspectionId, mapping })
+})
+
 export const register = (payload) => request('/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 export const login = (payload) => request('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
 export const getCurrentUser = () => request('/auth/me')
@@ -38,6 +52,9 @@ export const getOverview = (id) => request(`/overview/${id}`)
 export const getProducts = (id, params = {}) => request(`/products/${id}?min_support=${params.minSupport || 0.01}&min_lift=${params.minLift || 1}`)
 export const getUsers = (id, clusters = 4) => request(`/users/${id}?clusters=${clusters}`)
 export const getAnomalies = (id) => request(`/anomalies/${id}`)
+export const updateAnomalyReview = (id, orderId, status) => request(`/anomalies/${id}/${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
 export const getForecast = (id, days = 14) => request(`/forecast/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ forecast_days: days }) })
-export const getReport = (id) => request(`/report/${id}`)
+export const getReport = (id, aiConfig = null) => aiConfig
+  ? request(`/report/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ai_config: aiConfig }) })
+  : request(`/report/${id}`)
 export const deleteDataset = (id) => request(`/datasets/${id}`, { method: 'DELETE' })

@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { Card, DataTable, money, num } from '../components/ui'
 
 const pct = value => `${Number(value || 0).toFixed(1)}%`
@@ -12,6 +13,38 @@ function Bars({ rows = [], labelKey, valueKey, formatter = num, empty = '暂无�
 function priceBands(rows) {
   const groups = [['0–20 元', 0, 20], ['20–40 元', 20, 40], ['40–80 元', 40, 80], ['80 元以上', 80, Infinity]]
   return groups.map(([label, min, max]) => { const items = rows.filter(row => Number(row.avg_price) >= min && Number(row.avg_price) < max); return { label, product_count: items.length, total_revenue: items.reduce((sum, row) => sum + Number(row.total_revenue || 0), 0), total_sold: items.reduce((sum, row) => sum + Number(row.total_sold || 0), 0) } }).filter(row => row.product_count)
+}
+
+const TIME_METRICS = { quantity: ['销量', '份/日'], orders: ['订单数', '单/日'], revenue: ['营收', '元/日'] }
+
+function ProductTimeExplorer({ rows = [] }) {
+  const [metric, setMetric] = useState('quantity')
+  const [period, setPeriod] = useState('全部')
+  const [product, setProduct] = useState('全部商品')
+  const [hovered, setHovered] = useState(null)
+  const products = useMemo(() => [...new Set(rows.map(row => row.product_name))], [rows])
+  const periodRows = rows.filter(row => row.period === period && (product === '全部商品' || row.product_name === product))
+  const displayProducts = product === '全部商品' ? products.slice(0, 6) : [product]
+  const hours = [...new Set(periodRows.map(row => Number(row.hour)))].sort((a, b) => a - b)
+  const lookup = new Map(periodRows.map(row => [`${row.product_name}-${row.hour}`, row]))
+  const max = Math.max(...periodRows.map(row => Number(row[metric]) || 0), 1)
+  const peak = periodRows.reduce((best, row) => Number(row[metric] || 0) > Number(best?.[metric] || 0) ? row : best, null)
+  const focusProduct = product === '全部商品' ? peak?.product_name : product
+  const totalFor = targetPeriod => rows.filter(row => row.product_name === focusProduct && row.period === targetPeriod).reduce((sum, row) => sum + Number(row[metric] || 0), 0)
+  const weekdayTotal = totalFor('工作日')
+  const weekendTotal = totalFor('周末')
+  const busierPeriod = weekendTotal > weekdayTotal ? '周末' : '工作日'
+  const formatter = value => metric === 'revenue' ? money(value) : num(value)
+  const suggestion = peak ? `${peak.product_name} 在 ${String(peak.hour).padStart(2, '0')}:00 左右达到高峰，建议提前 1–2 小时完成备货；${busierPeriod}的日均${TIME_METRICS[metric][0]}更高。` : '选择商品后，系统会根据高峰时段给出备货建议。'
+
+  if (!rows.length) return <div className="empty">暂无商品时段数据</div>
+
+  return <div className="product-time-explorer">
+    <div className="product-time-controls"><label><span>查看商品</span><select value={product} onChange={event => setProduct(event.target.value)}><option>全部商品</option>{products.map(name => <option value={name} key={name}>{name}</option>)}</select></label><div><span>统计内容</span><div className="product-time-segments">{Object.entries(TIME_METRICS).map(([key, [label]]) => <button type="button" className={metric === key ? 'is-active' : ''} onClick={() => setMetric(key)} key={key}>{label}</button>)}</div></div><div><span>日期类型</span><div className="product-time-segments">{['全部', '工作日', '周末'].map(value => <button type="button" className={period === value ? 'is-active' : ''} onClick={() => setPeriod(value)} key={value}>{value}</button>)}</div></div></div>
+    <div className="product-time-insight"><div><span>备货建议</span><strong>{peak ? `${peak.product_name} · ${String(peak.hour).padStart(2, '0')}:00` : '等待数据'}</strong><p>{suggestion}</p></div><div className="product-time-compare"><span>工作日 / 周末</span><b>{formatter(weekdayTotal)} <small>vs</small> {formatter(weekendTotal)}</b><p>{focusProduct || '当前商品'}在{busierPeriod}更集中</p></div>{hovered && <div className="product-time-hover"><span>当前格详情</span><strong>{hovered.product_name} · {String(hovered.hour).padStart(2, '0')}:00</strong><p>销量 {num(hovered.quantity)} 份 · {num(hovered.orders)} 单 · 营收 {money(hovered.revenue)}</p></div>}</div>
+    <div className="product-time-scroll"><div className="product-time-grid" style={{ '--time-columns': Math.max(hours.length, 1) }}><div className="product-time-row product-time-header"><span>商品</span>{hours.map(hour => <span key={hour}>{String(hour).padStart(2, '0')}:00</span>)}</div>{displayProducts.map(name => <div className="product-time-row" key={name}><b title={name}>{name}</b>{hours.map(hour => { const row = lookup.get(`${name}-${hour}`) || { product_name: name, hour, quantity: 0, orders: 0, revenue: 0 }; const value = Number(row[metric] || 0); return <button type="button" className={`product-time-cell${peak?.product_name === name && Number(peak?.hour) === hour ? ' is-peak' : ''}`} onMouseEnter={() => setHovered(row)} onFocus={() => setHovered(row)} title={`${name} · ${String(hour).padStart(2, '0')}:00 · 销量 ${num(row.quantity)} 份 · ${num(row.orders)} 单 · 营收 ${money(row.revenue)}`} style={{ background: `rgba(75,128,109,${.06 + value / max * .72})` }} key={`${name}-${hour}`}><strong>{value ? formatter(value) : '—'}</strong><small>{TIME_METRICS[metric][1]}</small></button>})}</div>)}</div></div>
+    <div className="product-time-legend"><span>少</span><i /><i /><i /><i /><span>多</span><small>悬停任意格，可同时查看销量、订单数和营收</small></div>
+  </div>
 }
 
 export default function ProductsPage({ products }) {
@@ -29,6 +62,7 @@ export default function ProductsPage({ products }) {
   const structureLabelKey = hasCategoryView ? 'category' : 'label'
   const priceRank = ranking.filter(row => Number(row.avg_price) > 0).slice(0, 6)
   const riskRows = ranking.map(row => ({ ...row, refund_rate: row.order_count ? Number(row.refund_count || 0) / Number(row.order_count) * 100 : 0 })).filter(row => row.refund_rate >= 5 || Number(row.revenue_share || 0) < 2).sort((a, b) => b.refund_rate - a.refund_rate).slice(0, 5)
+  const productTimeAnalysis = products?.product_time_analysis || []
   const sourceLabel = products?.platform || '当前平台报表'
 
   return <main className="products-page">
@@ -39,6 +73,8 @@ export default function ProductsPage({ products }) {
     <section className="products-stat-row"><div><span>总销量</span><strong>{num(totalSold)}</strong><small>商品售出份数</small></div><div><span>商品平均价格</span><strong>{money(averagePrice)}</strong><small>实收 ÷ 销量</small></div><div><span>品类字段</span><strong>{hasCategoryView ? num(categoryRows.length) : '—'}</strong><small>{hasCategoryView ? '可用于品类结构' : '本报表未提供有效品类'}</small></div><div><span>组合规则</span><strong>{num(rules.length)}</strong><small>{rules.length ? '可进一步复盘' : '暂不生成建议'}</small></div></section>
 
     <section className="products-core-grid"><Card title="商品贡献" subtitle="按销量排序，右侧显示该商品贡献的营收比例。"><div className="product-contribution-list">{ranking.slice(0, 8).map((row, index) => <div key={row.product_name}><span className="product-position">{String(index + 1).padStart(2, '0')}</span><span><strong>{row.product_name}</strong><small>{row.category || '未提供品类'} · {num(row.order_count)} 笔订单</small></span><b>{num(row.total_sold)}<small>份</small></b><i><em style={{ width: `${Math.max(3, Math.min(100, Number(row.revenue_share || 0) * 3))}%` }} /></i><mark>{pct(row.revenue_share)}</mark></div>)}{!ranking.length && <div className="empty">暂无商品数据</div>}</div></Card><Card title={hasCategoryView ? '品类结构' : '价格带结构'} subtitle={hasCategoryView ? '当前报表提供有效品类字段。' : '未识别到足够品类信息，改用商品平均价格分组。'}><Bars rows={structureRows} labelKey={structureLabelKey} valueKey={structureValueKey} formatter={money} empty="暂无足够的结构数据" /></Card></section>
+
+    <Card className="products-time-card" title="商品销售时段" subtitle="选择商品和经营指标，对比工作日与周末，并直接获得备货建议。" action={<span className="products-card-tag">可交互</span>}><ProductTimeExplorer rows={productTimeAnalysis} /></Card>
 
     <section className="products-diagnostic-grid"><Card title="价格与销量" subtitle="帮助判断高销量商品和高价值商品是否是同一批。"><div className="product-price-list">{priceRank.map(row => <div key={row.product_name}><span><strong>{row.product_name}</strong><small>销量 {num(row.total_sold)} 份</small></span><b>{money(row.avg_price)}<small>平均售出价</small></b><i><em style={{ width: `${Math.max(5, Math.min(100, Number(row.total_sold || 0) / Math.max(Number(ranking[0]?.total_sold || 1), 1) * 100))}%` }} /></i></div>)}{!priceRank.length && <div className="empty">报表缺少价格字段，暂不展示价格关系</div>}</div></Card><Card title="商品风险提示" subtitle="风险提示用于复盘，不直接替代下架或促销决定。"><div className="product-risk-list">{riskRows.map(row => <div key={row.product_name}><span className={row.refund_rate >= 5 ? 'risk-dot high' : 'risk-dot'} /> <span><strong>{row.product_name}</strong><small>{row.refund_rate >= 5 ? `退款率 ${pct(row.refund_rate)}` : `营收占比仅 ${pct(row.revenue_share)}`}</small></span><b>{row.refund_rate >= 5 ? '退款复盘' : '贡献偏低'}</b></div>)}{!riskRows.length && <div className="product-safe-state"><span>✓</span><p><strong>暂未发现明显风险</strong><small>当前报表中没有达到提示阈值的商品。</small></p></div>}</div></Card></section>
 

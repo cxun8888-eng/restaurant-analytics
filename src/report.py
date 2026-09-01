@@ -214,7 +214,7 @@ def _section_forecast(forecast_result: pd.DataFrame) -> str:
 | 预测日均营收 | ¥{avg_pred:,.0f} |
 | 95% 置信区间 | ¥{low:,.0f} ~ ¥{high:,.0f} |
 | 趋势方向 | {trend} |
-| 预测方法 | 随机森林回归 + 时间特征工程 |
+| 预测方法 | 智能选择（时间顺序回测） |
 
 > 建议：以上界值做安全库存备案，下界值做最坏情况预案。
 """

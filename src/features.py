@@ -182,3 +182,135 @@ def build_hourly_heatmap(df_orders: pd.DataFrame) -> pd.DataFrame:
     heatmap.index = [weekday_names[int(i)] for i in heatmap.index]
 
     return heatmap
+
+
+def build_product_hourly_heatmap(df_orders: pd.DataFrame, top_n: int = 6) -> pd.DataFrame:
+    """构造商品 × 时段热力图，返回热门商品每天的平均售出份数。"""
+    if df_orders is None or df_orders.empty or "product_name" not in df_orders.columns:
+        return pd.DataFrame()
+
+    df = df_orders.copy()
+    if "date" not in df.columns:
+        df["date"] = pd.to_datetime(df["order_time"], errors="coerce").dt.strftime("%Y-%m-%d")
+    else:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    if "hour" not in df.columns:
+        df["hour"] = pd.to_datetime(df["order_time"], errors="coerce").dt.hour
+
+    df["product_name"] = df["product_name"].fillna("未命名商品").astype(str)
+    df["hour"] = pd.to_numeric(df["hour"], errors="coerce")
+    df = df.dropna(subset=["date", "hour"])
+    if df.empty:
+        return pd.DataFrame()
+
+    if "quantity" in df.columns:
+        df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(1).clip(lower=0)
+        top_products = df.groupby("product_name")["quantity"].sum().nlargest(top_n).index
+        daily = df[df["product_name"].isin(top_products)].groupby(["product_name", "date", "hour"])["quantity"].sum().reset_index(name="units")
+    else:
+        top_products = df.groupby("product_name")["order_id"].nunique().nlargest(top_n).index
+        daily = df[df["product_name"].isin(top_products)].groupby(["product_name", "date", "hour"])["order_id"].nunique().reset_index(name="units")
+
+    if daily.empty:
+        return pd.DataFrame()
+
+    day_count = max(int(df["date"].nunique()), 1)
+    heatmap = daily.groupby(["product_name", "hour"])["units"].sum().unstack(fill_value=0) / day_count
+    heatmap = heatmap.sort_index(axis=1)
+    heatmap.index.name = "product_name"
+    return heatmap.round(2)
+
+
+def build_product_time_analysis(df_orders: pd.DataFrame, top_n: int = 8) -> pd.DataFrame:
+    """返回商品 × 时段 × 工作日类型的销量、订单数与营收日均值。"""
+    if df_orders is None or df_orders.empty or "product_name" not in df_orders.columns:
+        return pd.DataFrame()
+    df = df_orders.copy()
+    timestamp = pd.to_datetime(df.get("order_time"), errors="coerce")
+    df["date"] = timestamp.dt.strftime("%Y-%m-%d")
+    df["hour"] = timestamp.dt.hour
+    df["is_weekend"] = timestamp.dt.weekday.isin([5, 6])
+    df["product_name"] = df["product_name"].fillna("未命名商品").astype(str)
+    df["quantity"] = pd.to_numeric(df.get("quantity", 1), errors="coerce").fillna(1).clip(lower=0)
+    df["actual_amount"] = pd.to_numeric(df.get("actual_amount", 0), errors="coerce").fillna(0).clip(lower=0)
+    df = df.dropna(subset=["date", "hour"])
+    if df.empty:
+        return pd.DataFrame()
+
+    top_products = df.groupby("product_name")["quantity"].sum().nlargest(top_n).index
+    df = df[df["product_name"].isin(top_products)]
+    output: list[pd.DataFrame] = []
+    for period, mask in (
+        ("全部", pd.Series(True, index=df.index)),
+        ("工作日", ~df["is_weekend"]),
+        ("周末", df["is_weekend"]),
+    ):
+        subset = df[mask]
+        day_count = int(subset["date"].nunique())
+        if subset.empty or day_count == 0:
+            continue
+        grouped = subset.groupby(["product_name", "hour"]).agg(
+            quantity=("quantity", "sum"),
+            orders=("order_id", "nunique"),
+            revenue=("actual_amount", "sum"),
+        ).reset_index()
+        for metric in ("quantity", "orders", "revenue"):
+            grouped[metric] = (grouped[metric] / day_count).round(2)
+        grouped["period"] = period
+        output.append(grouped)
+    return pd.concat(output, ignore_index=True) if output else pd.DataFrame()
+
+
+def build_segment_preferences(df_orders: pd.DataFrame, rfm: pd.DataFrame) -> pd.DataFrame:
+    """把用户分层补充为店主能直接理解的消费时段与触达建议。"""
+    if df_orders is None or df_orders.empty or rfm is None or rfm.empty:
+        return pd.DataFrame()
+    df = df_orders.copy().merge(rfm[["customer_id", "segment", "strategy"]], on="customer_id", how="inner")
+    timestamp = pd.to_datetime(df.get("order_time"), errors="coerce")
+    df["weekday"] = timestamp.dt.weekday
+    df["hour"] = timestamp.dt.hour
+    df["quantity"] = pd.to_numeric(df.get("quantity", 1), errors="coerce").fillna(1).clip(lower=0)
+    df["actual_amount"] = pd.to_numeric(df.get("actual_amount", 0), errors="coerce").fillna(0).clip(lower=0)
+    df = df.dropna(subset=["weekday", "hour"])
+    if df.empty:
+        return pd.DataFrame()
+
+    weekday_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    previous_names = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+
+    def period_label(hour: int) -> str:
+        if 6 <= hour <= 10:
+            return "早餐"
+        if 11 <= hour <= 14:
+            return "午餐"
+        if 15 <= hour <= 17:
+            return "下午"
+        if 18 <= hour <= 21:
+            return "晚餐"
+        return "夜间"
+
+    order_rows = df.drop_duplicates(["segment", "order_id"])
+    output: list[dict] = []
+    for segment, group in df.groupby("segment"):
+        segment_orders = order_rows[order_rows["segment"] == segment]
+        peak = segment_orders.groupby(["weekday", "hour"])["order_id"].nunique().sort_values(ascending=False)
+        peak_weekday, peak_hour = peak.index[0] if not peak.empty else (0, 12)
+        product = group.groupby("product_name")["quantity"].sum().sort_values(ascending=False)
+        favorite_product = str(product.index[0]) if not product.empty else "常购商品"
+        order_spend = group.groupby("order_id")["actual_amount"].sum()
+        customer_count = int(group["customer_id"].nunique())
+        visit_label = f"{weekday_names[int(peak_weekday)]}{period_label(int(peak_hour))}"
+        contact_time = f"{previous_names[int(peak_weekday)]} 15:00"
+        strategy = str(group["strategy"].dropna().iloc[0]) if group["strategy"].notna().any() else "提供与消费习惯匹配的优惠"
+        output.append({
+            "segment": segment,
+            "customer_count": customer_count,
+            "peak_visit": visit_label,
+            "peak_hour": int(peak_hour),
+            "favorite_product": favorite_product,
+            "avg_order_value": round(float(order_spend.mean()) if not order_spend.empty else 0.0, 2),
+            "contact_time": contact_time,
+            "offer_strategy": strategy,
+            "recommendation": f"{segment}主要在{visit_label}消费，建议{contact_time}推送{favorite_product}相关优惠。",
+        })
+    return pd.DataFrame(output).sort_values("customer_count", ascending=False).reset_index(drop=True)

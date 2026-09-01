@@ -1,0 +1,30 @@
+.products-time-card { overflow: hidden; }
+.product-time-explorer { min-width: 0; }
+.product-time-controls { display: grid; grid-template-columns: minmax(210px, .8fr) 1fr 1fr; gap: 12px; padding: 14px; background: color-mix(in srgb, var(--sage) 5%, var(--card)); border: 1px solid var(--line); border-radius: 9px; }
+.product-time-controls label, .product-time-controls > div { display: grid; gap: 7px; }
+.product-time-controls span { color: var(--muted); font-size: var(--type-label); font-weight: 650; }
+.product-time-controls select { min-height: 38px; padding: 0 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: var(--type-meta); }
+.product-time-segments { display: flex; gap: 5px; }
+.product-time-segments button { min-height: 38px; flex: 1; padding: 0 10px; color: var(--sidebar-text); background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: var(--type-meta); }
+.product-time-segments button.is-active { color: #f7fbf8; background: var(--navy); border-color: var(--navy); }
+.product-time-insight { display: grid; grid-template-columns: 1.2fr .8fr .95fr; gap: 10px; margin: 12px 0; }
+.product-time-insight > div { min-height: 104px; padding: 15px 17px; background: color-mix(in srgb, var(--sage) 6%, var(--card)); border: 1px solid var(--line); border-left: 3px solid var(--sage); border-radius: 8px; }
+.product-time-insight span, .product-time-insight p { color: var(--muted); font-size: var(--type-meta); }
+.product-time-insight strong, .product-time-insight b { display: block; margin-top: 6px; color: var(--ink); font-size: var(--type-item-title); }
+.product-time-insight p { margin: 6px 0 0; line-height: 1.5; }
+.product-time-compare b { font: 650 var(--type-item-title) "SF Mono", monospace; }.product-time-compare b small { color: var(--muted); font: var(--type-label) sans-serif; }
+.product-time-hover { border-left-color: var(--tone-warning) !important; }
+.product-time-scroll { overflow-x: auto; padding-bottom: 6px; }
+.product-time-grid { min-width: 100%; width: max-content; }
+.product-time-row { display: grid; grid-template-columns: 170px repeat(var(--time-columns), minmax(76px, 1fr)); gap: 6px; margin-top: 6px; }
+.product-time-row > b { display: flex; min-width: 0; align-items: center; padding-right: 10px; overflow: hidden; color: var(--ink); font-size: var(--type-meta); text-overflow: ellipsis; white-space: nowrap; }
+.product-time-header { margin-bottom: 2px; }
+.product-time-header span { color: var(--muted); font: var(--type-label) "SF Mono", monospace; text-align: center; }
+.product-time-header span:first-child { text-align: left; }
+.product-time-cell { display: grid; min-height: 52px; place-content: center; padding: 5px; color: var(--navy); border: 1px solid color-mix(in srgb, var(--sage) 13%, var(--line)); border-radius: 7px; text-align: center; }
+.product-time-cell:hover, .product-time-cell:focus-visible { border-color: var(--sage); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sage) 20%, transparent); transform: translateY(-1px); }
+.product-time-cell.is-peak { color: #f7fbf8; background: var(--sage) !important; }
+.product-time-cell strong { font: 650 var(--type-meta) "SF Mono", monospace; }.product-time-cell small { margin-top: 3px; font-size: var(--type-label); opacity: .78; }
+.product-time-legend { display: flex; align-items: center; gap: 5px; margin-top: 12px; color: var(--muted); font-size: var(--type-label); }
+.product-time-legend i { width: 19px; height: 9px; background: rgba(75,128,109,.12); border-radius: 3px; }.product-time-legend i:nth-of-type(2) { background: rgba(75,128,109,.28); }.product-time-legend i:nth-of-type(3) { background: rgba(75,128,109,.48); }.product-time-legend i:nth-of-type(4) { background: rgba(75,128,109,.72); }.product-time-legend small { margin-left: 7px; color: var(--muted); font-size: var(--type-label); }
+@media (max-width: 900px) { .product-time-controls { grid-template-columns: 1fr; }.product-time-insight { grid-template-columns: 1fr; }.product-time-row { grid-template-columns: 130px repeat(var(--time-columns), minmax(68px, 1fr)); } }

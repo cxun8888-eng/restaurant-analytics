@@ -1,4 +1,6 @@
-name: restaurant-analytics-dev
+# 与生产编排使用同一个项目名和数据卷，因此两套容器不会同时运行，
+# 从生产模式切换到开发模式也不会丢失账户和已上传的数据集。
+name: restaurant-analytics
 
 services:
   db:
@@ -8,7 +10,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-analytics}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-analytics_dev_password}
     volumes:
-      - postgres-data-dev:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-analytics} -d ${POSTGRES_DB:-restaurant_analytics}"]
       interval: 5s
@@ -21,6 +23,7 @@ services:
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/app
+      - analytics-data:/app/data
     ports:
       - "8000:8000"
     environment:
@@ -44,10 +47,11 @@ services:
     ports:
       - "4815:4815"
     environment:
-      VITE_API_URL: http://localhost:8000/api
+      VITE_API_URL: /api
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
       - api
 
 volumes:
-  postgres-data-dev:
+  analytics-data:
+  postgres-data:

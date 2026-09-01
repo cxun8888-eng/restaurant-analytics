@@ -5,7 +5,7 @@
 面试亮点：
 - Apriori 算法实现购物篮分析（Support/Confidence/Lift）
 - K-Means 聚类验证 RFM 分层
-- Prophet 时间序列预测（自动处理周期性和节假日）
+- 多模型时间序列回测（自动选择误差更低的预测方法）
 - Isolation Forest 异常检测
 """
 
@@ -149,175 +149,208 @@ def run_kmeans_clustering(rfm_df: pd.DataFrame, n_clusters: int = 4) -> Tuple[pd
 # ==================== 时间序列预测 ====================
 
 
+_FORECAST_FEATURES = [
+    "day_num", "month", "is_weekend", "day_of_month",
+    "lag_1", "lag_2", "lag_3", "lag_7",
+    "rolling_mean_7", "rolling_std_7",
+] + [f"wd_{weekday}" for weekday in range(7)]
+
+_FORECAST_METHODS = {
+    "random_forest": "随机森林回归",
+    "gradient_boosting": "梯度提升回归",
+    "weekly_seasonal": "七日周期基线",
+    "moving_average": "近 7 日移动平均",
+}
+
+
+def _forecast_features(pred_date: pd.Timestamp, day_num: int, history: List[float]) -> Dict[str, float]:
+    """只使用预测日之前的数据构造特征，避免把当天答案泄漏给模型。"""
+    recent = np.asarray(history[-7:], dtype=float)
+    features = {
+        "day_num": day_num,
+        "month": pred_date.month,
+        "is_weekend": 1 if pred_date.weekday() >= 5 else 0,
+        "day_of_month": pred_date.day,
+        "lag_1": history[-1],
+        "lag_2": history[-2],
+        "lag_3": history[-3],
+        "lag_7": history[-7],
+        "rolling_mean_7": float(recent.mean()),
+        "rolling_std_7": float(recent.std()),
+    }
+    features.update({f"wd_{weekday}": int(pred_date.weekday() == weekday) for weekday in range(7)})
+    return features
+
+
+def _forecast_training_frame(dates: List[pd.Timestamp], values: List[float], end: Optional[int] = None) -> Tuple[pd.DataFrame, np.ndarray]:
+    stop = len(values) if end is None else end
+    rows = [_forecast_features(dates[index], index, values[:index]) for index in range(7, stop)]
+    return pd.DataFrame(rows, columns=_FORECAST_FEATURES), np.asarray(values[7:stop], dtype=float)
+
+
+def _make_forecast_model(method_key: str):
+    from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+
+    if method_key == "random_forest":
+        return RandomForestRegressor(
+            n_estimators=160,
+            max_depth=6,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1,
+        )
+    if method_key == "gradient_boosting":
+        return GradientBoostingRegressor(
+            n_estimators=140,
+            learning_rate=0.04,
+            max_depth=2,
+            loss="huber",
+            random_state=42,
+        )
+    return None
+
+
+def _recursive_forecast(method_key: str, model, dates: List[pd.Timestamp], history: List[float], start_day_num: int) -> List[float]:
+    predictions: List[float] = []
+    rolling_history = [float(value) for value in history]
+    for offset, pred_date in enumerate(dates):
+        if method_key == "weekly_seasonal":
+            pred = rolling_history[-7]
+        elif method_key == "moving_average":
+            pred = float(np.mean(rolling_history[-7:]))
+        else:
+            features = _forecast_features(pred_date, start_day_num + offset, rolling_history)
+            pred = float(model.predict(pd.DataFrame([features], columns=_FORECAST_FEATURES))[0])
+        pred = max(0.0, pred)
+        predictions.append(pred)
+        rolling_history.append(pred)
+    return predictions
+
+
+def _smape(actual: np.ndarray, predicted: np.ndarray) -> float:
+    denominator = np.abs(actual) + np.abs(predicted)
+    ratio = np.divide(2 * np.abs(actual - predicted), denominator, out=np.zeros_like(actual, dtype=float), where=denominator > 1e-9)
+    return float(np.mean(ratio) * 100)
+
+
+def run_smart_forecast(
+    daily_df: pd.DataFrame,
+    forecast_days: int = 14,
+) -> Tuple[pd.DataFrame, Optional[Dict]]:
+    """按时间顺序回测多个候选算法，自动采用误差更低的方法预测未来营收。"""
+    df = daily_df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+    rev_col = "total_revenue" if "total_revenue" in df.columns else "revenue"
+    df[rev_col] = pd.to_numeric(df[rev_col], errors="coerce").fillna(0).clip(lower=0)
+
+    # 至少要有 7 天历史才能比较两种稳健基线；更短的数据只能给出提示性均值。
+    if len(df) < 8:
+        return _simple_sma_forecast(df, rev_col, forecast_days)
+
+    dates = list(df["date"])
+    values = [float(value) for value in df[rev_col]]
+    # 小样本保留最近可用的一段做回测；数据充足时固定留出至少 7 天。
+    validation_days = min(7, len(df) - 7) if len(df) < 21 else min(14, max(7, len(df) // 5))
+    train_end = len(df) - validation_days
+    X_train, y_train = _forecast_training_frame(dates, values, train_end)
+    validation_dates = dates[train_end:]
+    actual = np.asarray(values[train_end:], dtype=float)
+    candidate_scores = []
+    validation_predictions: Dict[str, List[float]] = {}
+    candidate_method_keys = ["weekly_seasonal", "moving_average"]
+    # 时间特征模型至少需要 7 条可训练样本；不足时仍然比较两个周期基线。
+    if train_end - 7 >= 7:
+        candidate_method_keys = list(_FORECAST_METHODS)
+
+    for method_key in candidate_method_keys:
+        model = _make_forecast_model(method_key)
+        if model is not None:
+            model.fit(X_train, y_train)
+        predicted = _recursive_forecast(method_key, model, validation_dates, values[:train_end], train_end)
+        predicted_array = np.asarray(predicted, dtype=float)
+        candidate_scores.append({
+            "key": method_key,
+            "method": _FORECAST_METHODS[method_key],
+            "smape": round(_smape(actual, predicted_array), 2),
+            "mae": round(float(np.mean(np.abs(actual - predicted_array))), 2),
+        })
+        validation_predictions[method_key] = predicted
+
+    candidate_scores.sort(key=lambda item: (item["smape"], item["mae"]))
+    selected = candidate_scores[0]
+    selected_key = selected["key"]
+    for score in candidate_scores:
+        score["selected"] = score["key"] == selected_key
+
+    final_model = _make_forecast_model(selected_key)
+    if final_model is not None:
+        X_full, y_full = _forecast_training_frame(dates, values)
+        final_model.fit(X_full, y_full)
+
+    last_date = df["date"].max()
+    future_dates = [last_date + timedelta(days=offset) for offset in range(1, forecast_days + 1)]
+    future_predictions = _recursive_forecast(selected_key, final_model, future_dates, values, len(values))
+
+    validation_residuals = actual - np.asarray(validation_predictions[selected_key], dtype=float)
+    residual_std = float(validation_residuals.std(ddof=1)) if len(validation_residuals) > 1 else 0.0
+    # 即使历史走势完全平稳，也保留一个小范围，避免把点预测误解成确定结果。
+    residual_std = max(residual_std, float(np.mean(values[-7:])) * 0.05)
+    predictions = []
+    for index, (pred_date, pred) in enumerate(zip(future_dates, future_predictions)):
+        uncertainty = 1.96 * residual_std * np.sqrt(1 + index * 0.04)
+        predictions.append({
+            "date": pred_date.strftime("%Y-%m-%d"),
+            "predicted": round(pred, 2),
+            "lower_bound": round(max(0, pred - uncertainty), 2),
+            "upper_bound": round(pred + uncertainty, 2),
+        })
+
+    return pd.DataFrame(predictions), {
+        "selection_mode": "智能选择" if len(candidate_method_keys) > 2 else "智能选择（数据较少）",
+        "method": selected["method"],
+        "method_key": selected_key,
+        "validation_smape": selected["smape"],
+        "validation_mae": selected["mae"],
+        "validation_days": validation_days,
+        "candidate_scores": candidate_scores,
+        "forecast_days": forecast_days,
+        "n_features": len(_FORECAST_FEATURES) if final_model is not None else 1,
+        "residual_std": round(residual_std, 2),
+        "selection_note": f"按最近 {validation_days} 天回测，对比 {len(candidate_scores)} 种方法后自动采用误差更低的方法。",
+    }
+
+
 def run_prophet_forecast(
     daily_df: pd.DataFrame,
     forecast_days: int = 14,
 ) -> Tuple[pd.DataFrame, Optional[Dict]]:
-    """
-    使用随机森林 + 时间特征工程预测未来营收
-
-    方法：将时间序列转化为监督学习问题
-    1. 构造特征：趋势(第几天)、星期几(one-hot)、月份、滞后特征(lag)
-    2. 用随机森林回归学习历史规律
-    3. 对未来每一天递归预测
-
-    Parameters
-    ----------
-    daily_df : 日聚合数据（须包含 date, total_revenue 或 revenue）
-    forecast_days : 预测天数
-
-    Returns
-    -------
-    Tuple[pd.DataFrame, Optional[Dict]]
-    """
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.preprocessing import StandardScaler
-
-    df = daily_df.copy()
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.sort_values("date").reset_index(drop=True)
-
-    # 兼容列名
-    rev_col = "total_revenue" if "total_revenue" in df.columns else "revenue"
-    y = df[rev_col].values
-
-    # ===== 特征工程 =====
-    n = len(df)
-    df["day_num"] = np.arange(n)                          # 线性趋势
-    df["weekday"] = df["date"].dt.weekday                 # 星期几 (0=周一)
-    df["month"] = df["date"].dt.month                     # 月份
-    df["is_weekend"] = df["weekday"].isin([5, 6]).astype(int)  # 是否周末
-    df["day_of_month"] = df["date"].dt.day                # 几号
-
-    # 滞后特征（用前几天营收预测下一天）
-    for lag in [1, 2, 3, 7]:
-        df[f"lag_{lag}"] = df[rev_col].shift(lag)
-
-    # 滚动统计特征
-    df["rolling_mean_7"] = df[rev_col].rolling(7, min_periods=1).mean()
-    df["rolling_std_7"] = df[rev_col].rolling(7, min_periods=1).std().fillna(0)
-
-    # 星期几 one-hot
-    weekday_dummies = pd.get_dummies(df["weekday"], prefix="wd")
-    df = pd.concat([df, weekday_dummies], axis=1)
-
-    # 特征列表
-    feature_cols = [
-        "day_num", "month", "is_weekend", "day_of_month",
-        "lag_1", "lag_2", "lag_3", "lag_7",
-        "rolling_mean_7", "rolling_std_7",
-    ] + [c for c in weekday_dummies.columns]
-
-    # 去掉前7天（因为 lag_7 为 NaN）
-    train_df = df.iloc[7:].copy()
-
-    X_train = train_df[feature_cols].fillna(0)
-    y_train = y[7:]
-
-    if len(X_train) < 7:
-        # 数据太少，回退到简单移动平均
-        return _simple_sma_forecast(df, rev_col, forecast_days)
-
-    # ===== 训练随机森林 =====
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_train)
-
-    model = RandomForestRegressor(
-        n_estimators=100,
-        max_depth=5,
-        random_state=42,
-        n_jobs=-1,
-    )
-    model.fit(X_scaled, y_train)
-
-    # ===== 训练集评估 =====
-    y_pred_train = model.predict(X_scaled)
-    mape = np.mean(np.abs((y_train - y_pred_train) / (y_train + 0.01))) * 100
-
-    # 用残差标准差估算置信区间
-    residuals = y_train - y_pred_train
-    residual_std = residuals.std()
-
-    # ===== 对未来递归预测 =====
-    last_known = df.iloc[-1].copy()
-    last_values = {f"lag_{i}": df[rev_col].iloc[-(i)] for i in [1, 2, 3, 7]}
-    rolling_window = list(df[rev_col].tail(7).values)
-
-    last_date = df["date"].max()
-    predictions = []
-
-    for i in range(1, forecast_days + 1):
-        pred_date = last_date + timedelta(days=i)
-
-        # 构造当天特征
-        features = {
-            "day_num": last_known["day_num"] + i,
-            "month": pred_date.month,
-            "is_weekend": 1 if pred_date.weekday() >= 5 else 0,
-            "day_of_month": pred_date.day,
-            "lag_1": last_values["lag_1"],
-            "lag_2": last_values["lag_2"],
-            "lag_3": last_values["lag_3"],
-            "lag_7": last_values["lag_7"],
-            "rolling_mean_7": np.mean(rolling_window[-7:]),
-            "rolling_std_7": np.std(rolling_window[-7:]) if len(rolling_window) >= 2 else 0,
-        }
-        # 星期几 one-hot
-        for c in weekday_dummies.columns:
-            features[c] = 0
-        wd_col = f"wd_{pred_date.weekday()}"
-        if wd_col in weekday_dummies.columns:
-            features[wd_col] = 1
-
-        X_new = pd.DataFrame([features])[feature_cols].fillna(0)
-        X_new_scaled = scaler.transform(X_new)
-        pred = model.predict(X_new_scaled)[0]
-
-        predictions.append({
-            "date": pred_date.strftime("%Y-%m-%d"),
-            "predicted": round(max(0, pred), 2),
-            "lower_bound": round(max(0, pred - 1.96 * residual_std), 2),
-            "upper_bound": round(max(0, pred + 1.96 * residual_std), 2),
-        })
-
-        # 更新滞后值用于下一次预测
-        for j in [3, 2, 1]:
-            last_values[f"lag_{j+1}"] = last_values[f"lag_{j}"]
-        last_values["lag_1"] = pred
-        second_last_values = {f"lag_{i}": df[rev_col].iloc[-(i-1)] if i > 1 else pred for i in [1, 2, 3, 7]}
-        # 更新 lag_7
-        if i <= 7:
-            last_values["lag_7"] = df[rev_col].iloc[-(7-i)] if 7-i < len(df) else df[rev_col].iloc[0]
-        else:
-            last_values["lag_7"] = predictions[i-8]["predicted"]
-
-        rolling_window.append(pred)
-        rolling_window = rolling_window[-7:]
-
-    result = pd.DataFrame(predictions)
-
-    return result, {
-        "mape": round(mape, 2),
-        "method": "随机森林回归(RandomForest)",
-        "forecast_days": forecast_days,
-        "n_features": len(feature_cols),
-        "residual_std": round(residual_std, 2),
-    }
+    """兼容旧调用；实际执行智能多模型选择。"""
+    return run_smart_forecast(daily_df, forecast_days)
 
 
 def _simple_sma_forecast(df, rev_col, forecast_days):
-    """数据量不够时的简单移动平均回退"""
+    """数据量不够时使用近 7 日移动平均，并在元数据中明确说明。"""
     recent = df.tail(7)
-    avg = recent[rev_col].mean()
-    last_date = df["date"].max()
-
+    avg = float(recent[rev_col].mean()) if not recent.empty else 0.0
+    last_date = df["date"].max() if not df.empty else pd.Timestamp.today().normalize()
     result = pd.DataFrame({
-        "date": [(last_date + timedelta(days=i+1)).strftime("%Y-%m-%d") for i in range(forecast_days)],
+        "date": [(last_date + timedelta(days=i + 1)).strftime("%Y-%m-%d") for i in range(forecast_days)],
         "predicted": [round(avg, 2)] * forecast_days,
-        "lower_bound": [round(avg * 0.85, 2)] * forecast_days,
+        "lower_bound": [round(max(0, avg * 0.85), 2)] * forecast_days,
         "upper_bound": [round(avg * 1.15, 2)] * forecast_days,
     })
-    return result, {"mape": None, "method": "简单移动平均(数据不足)", "forecast_days": forecast_days}
+    return result, {
+        "selection_mode": "智能选择（数据不足）",
+        "method": _FORECAST_METHODS["moving_average"],
+        "method_key": "moving_average",
+        "validation_smape": None,
+        "validation_mae": None,
+        "validation_days": 0,
+        "candidate_scores": [{"key": "moving_average", "method": _FORECAST_METHODS["moving_average"], "smape": None, "mae": None, "selected": True}],
+        "forecast_days": forecast_days,
+        "selection_note": "历史数据不足 8 天，暂用近 7 日平均值作为稳健参考。",
+    }
 
 
 # ==================== 异常检测 ====================
@@ -338,13 +371,16 @@ def run_isolation_forest(df_orders: pd.DataFrame) -> pd.DataFrame:
     """
     from sklearn.ensemble import IsolationForest
 
-    # 按订单聚合特征
+    # 按订单聚合特征，同时保留诊断页需要的人类可读上下文。
     order_features = df_orders.groupby("order_id").agg(
         total_amount=("actual_amount", "sum"),
         item_count=("product_name", "nunique"),
         total_quantity=("quantity", "sum"),
         avg_unit_price=("unit_price", "mean"),
         discount_total=("discount", "sum"),
+        order_date=("date", "first"),
+        platform=("platform", "first"),
+        products=("product_name", lambda values: "、".join(dict.fromkeys(values.astype(str)))[:120]),
     ).reset_index()
 
     # 提取下单时间
@@ -359,20 +395,66 @@ def run_isolation_forest(df_orders: pd.DataFrame) -> pd.DataFrame:
     X = order_features[["total_amount", "item_count", "total_quantity", "avg_unit_price", "discount_total"]].copy()
     X = X.fillna(0)
 
-    # 极小数据集无法稳定估计异常比例，直接返回正常结果。
-    if len(order_features) < 5:
+    # 机器学习负责发现“组合起来不寻常”的订单；极小数据集只采用稳健阈值。
+    if len(order_features) >= 5:
+        iso = IsolationForest(contamination=min(0.05, max(1 / len(order_features), 0.01)), random_state=42)
+        order_features["anomaly_label"] = iso.fit_predict(X)
+        order_features["anomaly_score"] = iso.score_samples(X)
+    else:
         order_features["anomaly_label"] = 1
         order_features["anomaly_score"] = 0.0
-        order_features["is_anomaly"] = False
-        return order_features
 
-    # 训练
-    iso = IsolationForest(contamination=min(0.05, max(1 / len(order_features), 0.01)), random_state=42)
-    order_features["anomaly_label"] = iso.fit_predict(X)
-    order_features["anomaly_score"] = iso.score_samples(X)
+    def robust_bounds(series: pd.Series, lower: bool = True) -> tuple[float, float]:
+        clean = pd.to_numeric(series, errors="coerce").dropna()
+        if clean.empty:
+            return 0.0, 0.0
+        q1, q3 = clean.quantile([0.25, 0.75])
+        spread = float(q3 - q1)
+        floor = max(0.0, float(q1 - 1.5 * spread)) if lower else float("-inf")
+        ceiling = float(q3 + 1.5 * spread)
+        return floor, ceiling
 
-    # -1 = 异常, 1 = 正常
-    order_features["is_anomaly"] = order_features["anomaly_label"] == -1
+    amount_low, amount_high = robust_bounds(order_features["total_amount"])
+    _, quantity_high = robust_bounds(order_features["total_quantity"], lower=False)
+    _, discount_high = robust_bounds(order_features["discount_total"], lower=False)
+
+    anomaly_types: list[str] = []
+    anomaly_reasons: list[str] = []
+    rule_flags: list[bool] = []
+    severities: list[str] = []
+    for row in order_features.itertuples(index=False):
+        types: list[str] = []
+        reasons: list[str] = []
+        amount = float(row.total_amount or 0)
+        quantity = float(row.total_quantity or 0)
+        discount = float(row.discount_total or 0)
+        if amount > amount_high:
+            types.append("金额异常")
+            reasons.append(f"实付金额 ¥{amount:,.2f}，高于常规上限 ¥{amount_high:,.2f}")
+        elif amount < amount_low:
+            types.append("金额异常")
+            reasons.append(f"实付金额 ¥{amount:,.2f}，低于常规下限 ¥{amount_low:,.2f}")
+        if quantity > quantity_high:
+            types.append("数量异常")
+            reasons.append(f"商品数量 {quantity:g} 份，高于常规上限 {quantity_high:g} 份")
+        if discount > max(0.0, discount_high):
+            types.append("折扣异常")
+            reasons.append(f"优惠金额 ¥{discount:,.2f}，高于常规上限 ¥{discount_high:,.2f}")
+
+        model_flag = int(row.anomaly_label) == -1
+        if model_flag and not types:
+            types.append("组合异常")
+            reasons.append("金额、数量、单价和折扣的组合明显偏离大多数订单")
+        rule_flag = bool(types)
+        anomaly_types.append("、".join(types))
+        anomaly_reasons.append("；".join(reasons))
+        rule_flags.append(rule_flag)
+        severities.append("高" if len(types) >= 2 else "中")
+
+    order_features["anomaly_types"] = anomaly_types
+    order_features["anomaly_reason"] = anomaly_reasons
+    order_features["severity"] = severities
+    order_features["is_anomaly"] = (order_features["anomaly_label"] == -1) | pd.Series(rule_flags, index=order_features.index)
 
     return order_features
 

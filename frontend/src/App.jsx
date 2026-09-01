@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import AppShell, { NAV } from './components/AppShell'
 import BrandMark from './components/BrandMark'
 import { Toast } from './components/ui'
-import { getAnomalies, getCurrentUser, getForecast, getOverview, getPreview, getProducts, getQuality, getReport, getUsers, logout as logoutRequest, uploadDataset } from './services/api'
+import { confirmDataset, getAnomalies, getCurrentUser, getForecast, getOverview, getPreview, getProducts, getQuality, getReport, getUsers, inspectDataset, logout as logoutRequest, updateAnomalyReview } from './services/api'
 import ForecastPage from './pages/ForecastPage'
 import OverviewPage from './pages/OverviewPage'
 import ProductPage from './pages/ProductsPage'
@@ -10,9 +10,11 @@ import ReportPage from './pages/ReportPage'
 import ScreenPage from './pages/ScreenPage'
 import UploadPage from './pages/UploadPage'
 import UsersPage from './pages/UsersPage'
+import AnomaliesPage from './pages/AnomaliesPage'
 import AuthPage from './pages/AuthPage'
 import LandingPage from './pages/LandingPage'
 import { readActiveAIConfig } from './utils/ai'
+import { buildReportExportHtml, buildWordExportHtml } from './utils/reportExport'
 
 function readRoute() { const route = window.location.hash.replace('#', ''); return NAV.some(([key]) => key === route) ? route : 'upload' }
 function readDataset() { try { return JSON.parse(localStorage.getItem('restaurant-analytics-dataset') || 'null') || {} } catch { return {} } }
@@ -20,7 +22,8 @@ function readEntryRoute() { const path = window.location.pathname.replace(/\/+$/
 
 export default function App() {
   const [tab, setTab] = useState(readRoute); const [user, setUser] = useState(null); const [authReady, setAuthReady] = useState(false); const [datasetId, setDatasetId] = useState(''); const [filename, setFilename] = useState(''); const [quality, setQuality] = useState(null); const [preview, setPreview] = useState(null)
-  const [overview, setOverview] = useState(null); const [products, setProducts] = useState(null); const [users, setUsers] = useState(null); const [forecast, setForecast] = useState(null); const [anomalies, setAnomalies] = useState(null); const [report, setReport] = useState('')
+  const [inspection, setInspection] = useState(null)
+  const [overview, setOverview] = useState(null); const [products, setProducts] = useState(null); const [users, setUsers] = useState(null); const [forecast, setForecast] = useState(null); const [anomalies, setAnomalies] = useState(null); const [report, setReport] = useState(''); const [reportData, setReportData] = useState(null); const [reportInfo, setReportInfo] = useState(null)
   const [busy, setBusy] = useState(false); const [progress, setProgress] = useState(0); const [toast, setToast] = useState(null); const [error, setError] = useState(''); const [entryRoute, setEntryRoute] = useState(readEntryRoute); const [openSettingsRequest, setOpenSettingsRequest] = useState(0)
 
   useEffect(() => { const onHash = () => setTab(readRoute()); window.addEventListener('hashchange', onHash); return () => window.removeEventListener('hashchange', onHash) }, [])
@@ -69,22 +72,57 @@ export default function App() {
     if (!file) return
     const valid = ['.csv', '.xlsx', '.xls'].some(ext => file.name.toLowerCase().endsWith(ext)); if (!valid) { fail(new Error('仅支持 CSV、XLSX 或 XLS 文件')); return }
     setBusy(true); setProgress(0); setError('')
-    try { const result = await uploadDataset(file, setProgress, readActiveAIConfig()); setDatasetId(result.dataset_id); setFilename(result.filename || file.name); localStorage.setItem('restaurant-analytics-dataset', JSON.stringify({ id: result.dataset_id, filename: result.filename || file.name })); await loadDataset(result.dataset_id) }
+    try { const result = await inspectDataset(file, setProgress, readActiveAIConfig()); setInspection(result); setQuality(result.quality); setPreview({ columns: result.columns || [], rows: result.sample_rows || [] }); setToast({ type: 'success', message: '文件已检查，请确认字段识别结果' }) }
     catch (err) { fail(err) } finally { setBusy(false); setProgress(0) }
   }
+  const cancelInspection = () => { setInspection(null); setQuality(null); setPreview(null); setError(''); setToast(null) }
+  const handleConfirm = async mapping => {
+    if (!inspection?.inspection_id) return
+    setBusy(true); setError('')
+    try {
+      const result = await confirmDataset(inspection.inspection_id, mapping)
+      setDatasetId(result.dataset_id); setFilename(result.filename || inspection.filename); localStorage.setItem('restaurant-analytics-dataset', JSON.stringify({ id: result.dataset_id, filename: result.filename || inspection.filename })); setInspection(null); await loadDataset(result.dataset_id)
+    } catch (err) { throw err } finally { setBusy(false) }
+  }
   const runForecast = async () => { setBusy(true); setError(''); try { setForecast(await getForecast(datasetId)); setToast({ type: 'success', message: '预测结果已更新' }) } catch (err) { fail(err) } finally { setBusy(false) } }
-  const generateReport = async () => { setBusy(true); setError(''); try { setReport((await getReport(datasetId)).report); setToast({ type: 'success', message: '诊断报告已生成' }) } catch (err) { fail(err) } finally { setBusy(false) } }
-  const downloadReport = () => { const blob = new Blob([report], { type: 'text/markdown;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `经营诊断报告_${filename || 'report'}.md`; link.click(); URL.revokeObjectURL(url); setToast({ type: 'success', message: '报告下载已开始' }) }
+  const reviewAnomaly = async (orderId, status) => {
+    try { await updateAnomalyReview(datasetId, orderId, status); setAnomalies(await getAnomalies(datasetId)); setToast({ type: 'success', message: '复核状态已保存' }) }
+    catch (err) { fail(err) }
+  }
+  const generateReport = async () => { setBusy(true); setError(''); try { const result = await getReport(datasetId, readActiveAIConfig()); setReport(result.report || ''); setReportData(result.ai_report || null); setReportInfo({ mode: result.report_mode || 'rules', provider: result.provider, model: result.model, warning: result.ai_warning }); setToast({ type: 'success', message: result.report_mode === 'ai' ? 'AI 经营解读已生成' : result.ai_warning || '本地经营报告已生成' }) } catch (err) { fail(err) } finally { setBusy(false) } }
+  const downloadReport = (format = 'md') => {
+    if (!report) return
+    const now = new Date()
+    const exportDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const baseName = `懂单儿_${exportDate}_分析报告`
+    const triggerDownload = (blob, extension) => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${baseName}.${extension}`; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000) }
+    const exportHtml = buildReportExportHtml({ report, reportData, reportInfo, filename, includeAppendix: false })
+    if (format === 'word') {
+      triggerDownload(new Blob(['\ufeff', buildWordExportHtml({ report, reportData, reportInfo, filename })], { type: 'application/msword;charset=utf-8' }), 'doc')
+      setToast({ type: 'success', message: 'Word 报告下载已开始' })
+      return
+    }
+    if (format === 'pdf') {
+      const printWindow = window.open('', '_blank', 'width=960,height=760')
+      if (!printWindow) { setToast({ type: 'error', message: '打印窗口被浏览器拦截，请允许弹窗后重试' }); return }
+      printWindow.document.write(exportHtml)
+      printWindow.document.close(); printWindow.document.title = baseName; printWindow.focus(); window.setTimeout(() => { printWindow.print(); printWindow.close() }, 250)
+      setToast({ type: 'success', message: '已打开 PDF 打印窗口，请选择“另存为 PDF”' })
+      return
+    }
+    triggerDownload(new Blob([report], { type: 'text/markdown;charset=utf-8' }), 'md')
+    setToast({ type: 'success', message: 'Markdown 报告下载已开始' })
+  }
   const enterAuth = mode => { const safeMode = mode === 'register' ? 'register' : 'login'; setEntryRoute({ isAuth: true, mode: safeMode }); window.history.pushState({ auth: safeMode }, '', `/zh/${safeMode}`); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const leaveAuth = () => { setEntryRoute({ isAuth: false, mode: 'login' }); window.history.pushState({}, '', '/zh'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const handleAuthenticated = nextUser => { setUser(nextUser); setEntryRoute({ isAuth: false, mode: 'login' }); window.history.replaceState({}, '', '/zh') }
   const handleLogout = async () => {
     try { await logoutRequest() } catch { /* 即使会话已过期，也要清理本地界面状态。 */ }
-    setUser(null); setDatasetId(''); setFilename(''); setQuality(null); setPreview(null); setOverview(null); setProducts(null); setUsers(null); setForecast(null); setAnomalies(null); setReport(''); localStorage.removeItem('restaurant-analytics-dataset'); window.location.hash = 'upload'; setTab('upload'); setEntryRoute({ isAuth: false, mode: 'login' }); window.history.replaceState({}, '', '/zh')
+    setUser(null); setDatasetId(''); setFilename(''); setQuality(null); setPreview(null); setOverview(null); setProducts(null); setUsers(null); setForecast(null); setAnomalies(null); setReport(''); setReportData(null); setReportInfo(null); localStorage.removeItem('restaurant-analytics-dataset'); window.location.hash = 'upload'; setTab('upload'); setEntryRoute({ isAuth: false, mode: 'login' }); window.history.replaceState({}, '', '/zh')
   }
   const handleUserUpdated = updatedUser => setUser(updatedUser)
-  const handleDatasetDeleted = () => { setDatasetId(''); setFilename(''); setQuality(null); setPreview(null); setOverview(null); setProducts(null); setUsers(null); setForecast(null); setAnomalies(null); setReport(''); window.location.hash = 'upload'; setTab('upload'); setToast({ type: 'success', message: '当前数据集已删除' }) }
-  const view = { upload: <UploadPage quality={quality} preview={preview} onUpload={handleUpload} progress={progress} onOpenSettings={() => setOpenSettingsRequest(current => current + 1)} />, overview: <OverviewPage overview={overview} products={products} />, products: <ProductPage products={products} />, users: <UsersPage users={users} />, forecast: <ForecastPage forecast={forecast} anomalies={anomalies} onForecast={runForecast} />, screen: <ScreenPage overview={overview} products={products} />, report: <ReportPage report={report} onGenerate={generateReport} onDownload={downloadReport} /> }
+  const handleDatasetDeleted = () => { setDatasetId(''); setFilename(''); setQuality(null); setPreview(null); setOverview(null); setProducts(null); setUsers(null); setForecast(null); setAnomalies(null); setReport(''); setReportData(null); setReportInfo(null); window.location.hash = 'upload'; setTab('upload'); setToast({ type: 'success', message: '当前数据集已删除' }) }
+  const view = { upload: <UploadPage quality={quality} preview={preview} inspection={inspection} onUpload={handleUpload} onConfirm={handleConfirm} onCancelInspection={cancelInspection} busy={busy} progress={progress} onOpenSettings={() => setOpenSettingsRequest(current => current + 1)} />, overview: <OverviewPage overview={overview} products={products} />, products: <ProductPage products={products} />, users: <UsersPage users={users} />, anomalies: <AnomaliesPage data={anomalies} onReview={reviewAnomaly} />, forecast: <ForecastPage forecast={forecast} onForecast={runForecast} />, screen: <ScreenPage overview={overview} products={products} />, report: <ReportPage report={report} reportData={reportData} reportInfo={reportInfo} onGenerate={generateReport} onDownload={downloadReport} busy={busy} /> }
 
   if (!authReady) return <main className="auth-page auth-loading"><BrandMark variant="square" className="auth-loading-mark" /><span>正在连接经营台…</span></main>
   if (!user && !entryRoute.isAuth) return <LandingPage onAuth={enterAuth} />

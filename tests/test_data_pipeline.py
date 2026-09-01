@@ -4,7 +4,7 @@ import pandas as pd
 
 from src.data_pipeline import DataPipeline
 from src.analysis import compute_overview_metrics
-from src.features import build_rfm_features
+from src.features import build_product_time_analysis, build_rfm_features, build_segment_preferences
 from src.models import run_isolation_forest
 
 
@@ -33,6 +33,17 @@ def test_rfm_and_anomaly_detection_work_with_tiny_dataset():
     assert len(rfm) == 2
     assert {"R_score", "F_score", "M_score", "segment"}.issubset(rfm.columns)
     assert len(anomalies) == 2
+    assert {"anomaly_types", "anomaly_reason", "severity"}.issubset(anomalies.columns)
+
+
+def test_product_time_and_segment_preferences_are_business_readable():
+    frame, _ = DataPipeline().run(minimal_orders().to_csv(index=False).encode("utf-8"), "orders.csv")
+    rfm = build_rfm_features(frame)
+    product_time = build_product_time_analysis(frame)
+    preferences = build_segment_preferences(frame, rfm)
+
+    assert {"product_name", "period", "hour", "quantity", "orders", "revenue"}.issubset(product_time.columns)
+    assert {"segment", "peak_visit", "favorite_product", "contact_time", "recommendation"}.issubset(preferences.columns)
 
 
 def test_pipeline_handles_mixed_dates_and_overview_does_not_crash():
@@ -51,3 +62,45 @@ def test_pipeline_handles_mixed_dates_and_overview_does_not_crash():
     assert any("日期无法识别" in issue for issue in quality["issues"])
     metrics = compute_overview_metrics(frame)
     assert metrics["total_orders"] == 3
+
+
+def test_overview_handles_single_day_nullable_amounts():
+    # Nullable pandas numeric columns return pd.NA for std() with one value.
+    # A one-day report is valid and must still produce JSON-safe statistics.
+    raw = pd.DataFrame(
+        [
+            {"order_id": "A-1", "order_time": "2026-08-28", "product_name": "汉堡", "total_amount": 20},
+            {"order_id": "A-2", "order_time": "2026-08-28", "product_name": "可乐", "total_amount": 8},
+        ]
+    )
+    frame, _ = DataPipeline().run(raw.to_csv(index=False).encode("utf-8"), "orders.csv")
+
+    metrics = compute_overview_metrics(frame)
+
+    assert metrics["revenue_stats"]["std"] == 0.0
+    assert metrics["revenue_stats"]["skewness"] == 0.0
+    assert metrics["revenue_stats"]["kurtosis"] == 0.0
+
+
+def test_pipeline_preserves_meaningful_auxiliary_report_fields():
+    raw = pd.DataFrame(
+        [
+            {
+                "order_id": "A-1", "customer_id": "C-1", "restaurant_name": "Cafe A",
+                "cuisine_type": "Japanese", "cost_of_the_order": "20.5",
+                "day_of_the_week": "Weekend", "rating": "5",
+                "food_preparation_time": 18, "delivery_time": 26,
+            }
+        ]
+    )
+    frame, quality = DataPipeline().run(raw.to_csv(index=False).encode("utf-8"), "foodhub.csv")
+
+    assert frame.loc[0, "total_amount"] == 20.5
+    assert frame.loc[0, "category"] == "Japanese"
+    assert frame.loc[0, "restaurant_name"] == "Cafe A"
+    assert frame.loc[0, "weekday_label"] == "Weekend"
+    assert frame.loc[0, "rating"] == 5
+    assert frame.loc[0, "preparation_time"] == 18
+    assert frame.loc[0, "delivery_duration"] == 26
+    assert any(item["source"] == "cost_of_the_order" and item["field"] == "total_amount" for item in quality["column_mapping"])
+    assert not any(item["source"] == "restaurant_name" and item["field"] == "product_name" for item in quality["column_mapping"])
