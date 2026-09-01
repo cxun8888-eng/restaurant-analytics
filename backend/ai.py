@@ -346,3 +346,132 @@ async def generate_ai_report(config: dict[str, Any], summary: dict[str, Any]) ->
     result["provider"] = provider
     result["model"] = str(config.get("modelId") or "")
     return result
+
+
+PUBLISH_PLATFORM_NAMES = {
+    "douyin": "抖音图文",
+    "xiaohongshu": "小红书笔记",
+    "weibo": "微博动态",
+}
+
+
+def _publish_copy_prompt(
+    platform: str,
+    brief: str,
+    current_draft: dict[str, Any] | None = None,
+    tone: str = "自然真诚",
+) -> str:
+    """Build a bounded prompt for public-facing restaurant copy."""
+    platform_name = PUBLISH_PLATFORM_NAMES.get(platform, "社交平台")
+    context = {
+        "目标平台": platform_name,
+        "写作需求": brief,
+        "语气": tone,
+        "已有标题": str((current_draft or {}).get("title") or "")[:200],
+        "已有正文": str((current_draft or {}).get("content") or "")[:5000],
+        "已有话题": list((current_draft or {}).get("tags") or [])[:30],
+    }
+    return """你是餐饮门店的内容编辑。请根据用户提供的信息，为指定平台生成一条可公开发布的中文文案。
+只使用用户明确提供的事实，不得编造价格、折扣、地址、营业时间、食材来源、销量或顾客评价。不得加入手机号、内部预算、库存、账号凭据或审批信息。文案要像真实门店在说话，避免空泛口号、夸大承诺和机械堆砌 emoji。
+
+只返回 JSON，不要 markdown，不要代码块。格式：
+{"title":"标题","content":"正文","tags":["话题1","话题2"],"angle":"一句话说明本次写作角度"}
+
+要求：标题不超过 80 字；正文不超过 3000 字；话题最多 12 个，每个话题不带 #；angle 不超过 120 字。微博也需要返回一个便于编辑的短标题，交接时系统会把它并入正文。
+
+写作上下文：
+""" + json.dumps(context, ensure_ascii=False, default=str)
+
+
+def _validate_publish_copy_result(value: dict[str, Any]) -> dict[str, Any]:
+    """Normalize creative AI output before it can replace the local draft."""
+    if not isinstance(value, dict):
+        raise AIServiceError("AI 发布文案返回结果格式不正确")
+
+    title = str(value.get("title") or "").strip()[:80]
+    content = str(value.get("content") or value.get("body") or "").strip()[:3000]
+    if not content:
+        raise AIServiceError("AI 没有返回可用的发布正文")
+
+    raw_tags = value.get("tags", [])
+    if isinstance(raw_tags, str):
+        raw_tags = re.split(r"[,，\n]+", raw_tags)
+    if not isinstance(raw_tags, list):
+        raw_tags = []
+    tags: list[str] = []
+    for item in raw_tags:
+        tag = re.sub(r"^#+", "", str(item)).strip()[:30]
+        if tag and tag not in tags:
+            tags.append(tag)
+        if len(tags) == 12:
+            break
+
+    return {
+        "title": title,
+        "content": content,
+        "tags": tags,
+        "angle": str(value.get("angle") or "").strip()[:120],
+    }
+
+
+async def generate_publish_copy(
+    config: dict[str, Any],
+    platform: str,
+    brief: str,
+    current_draft: dict[str, Any] | None = None,
+    tone: str = "自然真诚",
+) -> dict[str, Any]:
+    """Generate public restaurant copy using the provider selected in settings."""
+    provider = str(config.get("provider", "")).strip().lower()
+    if provider not in {"deepseek", "doubao", "openai", "gemini"}:
+        raise AIServiceError("暂不支持该 AI 服务商")
+    if platform not in PUBLISH_PLATFORM_NAMES:
+        raise AIServiceError("暂不支持这个发布平台")
+    api_key = str(config.get("apiKey") or config.get("api_key") or "").strip()
+    if not api_key:
+        raise AIServiceError("未配置 AI API Key")
+    prompt = _publish_copy_prompt(platform, brief, current_draft=current_draft, tone=tone)
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=8.0)) as client:
+            if provider == "gemini":
+                model = str(config.get("modelId") or "gemini-2.0-flash")
+                url = f"{_endpoint(config)}/models/{model}:generateContent"
+                response = await client.post(
+                    url,
+                    params={"key": api_key},
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.55},
+                    },
+                )
+                if response.status_code >= 400:
+                    raise AIServiceError(f"Gemini 请求失败（HTTP {response.status_code}）")
+                body = response.json()
+                text = body.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            else:
+                model = str(config.get("modelId") or ("deepseek-chat" if provider == "deepseek" else "gpt-4o-mini"))
+                url = f"{_endpoint(config)}/chat/completions"
+                response = await client.post(
+                    url,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model,
+                        "temperature": 0.55,
+                        "messages": [
+                            {"role": "system", "content": "你只输出合法 JSON。"},
+                            {"role": "user", "content": prompt},
+                        ],
+                    },
+                )
+                if response.status_code >= 400:
+                    raise AIServiceError(f"{provider or 'AI'} 请求失败（HTTP {response.status_code}）")
+                body = response.json()
+                text = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+    except httpx.HTTPError as exc:
+        raise AIServiceError("AI 文案服务暂时不可用，请稍后重试") from exc
+
+    result = _validate_publish_copy_result(_extract_json(text))
+    result["provider"] = provider
+    result["model"] = model
+    return result

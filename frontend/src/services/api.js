@@ -57,4 +57,9 @@ export const getForecast = (id, days = 14) => request(`/forecast/${id}`, { metho
 export const getReport = (id, aiConfig = null) => aiConfig
   ? request(`/report/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ai_config: aiConfig }) })
   : request(`/report/${id}`)
+export const generatePublishCopy = (payload, aiConfig) => request('/publish/copy', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ ...payload, ai_config: aiConfig })
+})
 export const deleteDataset = (id) => request(`/datasets/${id}`, { method: 'DELETE' })
