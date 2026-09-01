@@ -4,6 +4,8 @@
 
 ## 待发布
 
+- 新增“内容发布”侧边栏工作台，支持草稿预览、抖音/小红书/微博文案交接和本机回执记录。
+- 接入 [Cross-platform Publish Review](https://github.com/cxun8888-eng/cross-platform-publish-review) 的公开草稿与回执契约，保持账号、Cookie和本地素材在官方平台侧处理。
 - 生产环境 Docker 编排与云服务器部署方案。
 - 自动化数据库备份、恢复验证和服务监控。
 - 固定域名、HTTPS 与正式在线体验地址。

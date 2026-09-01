@@ -8,5 +8,6 @@ import './styles/anomalies.css'
 import './styles/forecast.css'
 import './styles/products.css'
 import './styles/users.css'
+import './styles/publish.css'
 
 createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>)

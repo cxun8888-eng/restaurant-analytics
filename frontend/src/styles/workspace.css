@@ -1,7 +1,7 @@
 /* 页面骨架与共享组件规格。 */
 .page-title-anomalies { display: none; }
 
-:is(.overview-page, .products-page, .users-page, .anomalies-page, .forecast-page, .screen-page, .report-page) {
+:is(.overview-page, .products-page, .users-page, .anomalies-page, .forecast-page, .screen-page, .report-page, .publish-page) {
   width: 100%;
   color: var(--navy);
 }
