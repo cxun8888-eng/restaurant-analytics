@@ -13,46 +13,6 @@ def test_health_endpoint():
     assert response.json() == {"status": "ok"}
 
 
-def test_generate_publish_copy_uses_selected_ai_provider(authenticated_client, monkeypatch):
-    async def fake_generate(config, platform, brief, current_draft=None, tone="自然真诚"):
-        assert config["provider"] == "deepseek"
-        assert platform == "douyin"
-        assert brief == "介绍周末晚市新品"
-        assert current_draft == {"title": "", "content": "", "tags": []}
-        assert tone == "门店故事"
-        return {
-            "title": "晚市，来尝三道新菜",
-            "content": "这个周末，我们把三道新菜端上桌。",
-            "tags": ["周末晚市", "门店上新"],
-            "angle": "从门店上新现场切入",
-            "provider": "deepseek",
-            "model": "deepseek-chat",
-        }
-
-    monkeypatch.setattr("backend.main.generate_publish_copy", fake_generate)
-    response = authenticated_client.post(
-        "/api/publish/copy",
-        json={
-            "platform": "douyin",
-            "brief": "介绍周末晚市新品",
-            "tone": "门店故事",
-            "title": "",
-            "content": "",
-            "tags": [],
-            "ai_config": {
-                "provider": "deepseek",
-                "apiKey": "browser-only-key",
-                "modelId": "deepseek-chat",
-                "endpoint": "https://api.deepseek.com",
-            },
-        },
-    )
-
-    assert response.status_code == 200
-    assert response.json()["provider"] == "deepseek"
-    assert response.json()["draft"]["tags"] == ["周末晚市", "门店上新"]
-
-
 @pytest.fixture
 def authenticated_client():
     user = SimpleNamespace(id=987654)

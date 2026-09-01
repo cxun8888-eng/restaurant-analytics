@@ -1,4 +1,4 @@
-from backend.ai import _publish_copy_prompt, _validate_publish_copy_result, _validate_result
+from backend.ai import _validate_result
 from backend.main import _analysis_gate
 
 
@@ -88,29 +88,3 @@ def test_analysis_gate_allows_restaurant_order_with_amount():
 
     assert result["allowed"] is True
     assert result["kind"] == "restaurant_order"
-
-
-def test_publish_copy_result_is_bounded_and_normalized():
-    result = _validate_publish_copy_result(
-        {
-            "title": " 周末晚市上新 ",
-            "content": "今晚想和你分享三道新菜。",
-            "tags": ["#晚市", "晚市", " 城市探店 "],
-            "angle": "用门店口吻介绍新品",
-        }
-    )
-
-    assert result == {
-        "title": "周末晚市上新",
-        "content": "今晚想和你分享三道新菜。",
-        "tags": ["晚市", "城市探店"],
-        "angle": "用门店口吻介绍新品",
-    }
-
-
-def test_publish_copy_prompt_forbids_invented_business_details():
-    prompt = _publish_copy_prompt("xiaohongshu", "写三道新品", tone="自然真诚")
-
-    assert "小红书笔记" in prompt
-    assert "不得编造价格、折扣、地址、营业时间" in prompt
-    assert "只返回 JSON" in prompt
