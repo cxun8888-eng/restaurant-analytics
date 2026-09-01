@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildPublishHandoffUrl, parsePublicationReceipt, parsePublishTags, PUBLISH_SOURCE } from '../src/utils/publishBridge.js'
+import { buildPublishHandoffUrl, normalizePublishBridgeStatus, parsePublicationReceipt, parsePublishTags, PUBLISH_SOURCE } from '../src/utils/publishBridge.js'
 
 function decodeBase64Url(value) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')
@@ -31,6 +31,7 @@ test('buildPublishHandoffUrl creates a bounded public draft for the selected off
 
 test('parsePublishTags normalizes Chinese separators and removes duplicates', () => {
   assert.deepEqual(parsePublishTags('#新品，新品, 晚餐\n城市探店'), ['新品', '晚餐', '城市探店'])
+  assert.deepEqual(parsePublishTags('#周末套餐 #学生党 #美食推荐'), ['周末套餐', '学生党', '美食推荐'])
 })
 
 test('parsePublicationReceipt keeps supported metrics and official work links', () => {
@@ -61,4 +62,25 @@ test('parsePublicationReceipt removes untrusted work links and rejects unsupport
   })
   assert.equal(parsePublicationReceipt(`#publication_receipt=${encoded}`).workUrl, undefined)
   assert.throws(() => parsePublicationReceipt(`#publication_receipt=${encodeReceipt({ version: 2 })}`), /不受支持/)
+})
+
+test('normalizePublishBridgeStatus only marks an exact configured and permitted bridge ready', () => {
+  const expected = { origin: 'http://localhost:4815', callbackPath: '/zh' }
+  const ready = normalizePublishBridgeStatus({
+    ok: true,
+    version: '0.1.2',
+    appBaseUrl: 'http://localhost:4815',
+    callbackPath: '/zh',
+    debuggerEnabled: true
+  }, expected)
+  assert.equal(ready.ready, true)
+
+  const wrongCallback = normalizePublishBridgeStatus({ ...ready, ok: true, callbackPath: '/index.html' }, expected)
+  assert.equal(wrongCallback.detected, true)
+  assert.equal(wrongCallback.ready, false)
+  assert.equal(wrongCallback.callbackMatches, false)
+
+  const spoofed = normalizePublishBridgeStatus({ ok: true, version: 'latest', appBaseUrl: expected.origin, callbackPath: '/zh', debuggerEnabled: true }, expected)
+  assert.equal(spoofed.detected, false)
+  assert.equal(spoofed.ready, false)
 })

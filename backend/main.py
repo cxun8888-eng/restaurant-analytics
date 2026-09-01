@@ -25,7 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.auth import get_current_user, hash_password, set_auth_cookie, user_payload, verify_password, AUTH_COOKIE_NAME
-from backend.ai import AIServiceError, generate_ai_report, suggest_field_mapping
+from backend.ai import AIServiceError, generate_ai_report, generate_publish_copy, suggest_field_mapping
 from backend.database import get_db, init_db
 from backend.models import User
 from backend.storage import Dataset, DatasetStore, PendingUpload, PendingUploadStore
@@ -98,6 +98,17 @@ class AnomalyReviewRequest(BaseModel):
 class ReportRequest(BaseModel):
     # API key is sent only for this request and is never persisted by the API.
     ai_config: dict[str, Any] | None = None
+
+
+class PublishCopyRequest(BaseModel):
+    platform: str = Field(pattern="^(douyin|xiaohongshu|weibo)$")
+    brief: str = Field(min_length=2, max_length=1000)
+    tone: str = Field(default="自然真诚", min_length=1, max_length=30)
+    title: str = Field(default="", max_length=200)
+    content: str = Field(default="", max_length=10000)
+    tags: list[str] = Field(default_factory=list, max_length=30)
+    # API key is sent only for this request and is never persisted by the API.
+    ai_config: dict[str, Any]
 
 
 class RegisterRequest(BaseModel):
@@ -850,3 +861,23 @@ async def ai_report(dataset_id: str, request: ReportRequest | None = None, curre
     except (AIServiceError, TypeError, ValueError, IndexError, json.JSONDecodeError) as exc:
         logger.warning("AI report unavailable, using deterministic report: %s", exc)
         return {"dataset_id": dataset_id, "report": content, "report_mode": "rules", "provider": None, "ai_report": None, "ai_warning": "AI 解读暂不可用，已切换为本地数据报告。"}
+
+
+@app.post("/api/publish/copy")
+async def publish_copy(payload: PublishCopyRequest, current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+    """Generate a public copy draft without storing the user's AI credentials."""
+    del current_user  # Authentication gates access; no account data is sent to AI.
+    try:
+        result = await generate_publish_copy(
+            payload.ai_config,
+            payload.platform,
+            payload.brief.strip(),
+            current_draft={"title": payload.title, "content": payload.content, "tags": payload.tags},
+            tone=payload.tone.strip(),
+        )
+    except (AIServiceError, TypeError, ValueError, IndexError, json.JSONDecodeError) as exc:
+        logger.warning("AI publish copy unavailable: %s", exc)
+        raise HTTPException(status_code=502, detail=str(exc) or "AI 文案服务暂时不可用") from exc
+    provider = result.pop("provider", payload.ai_config.get("provider"))
+    model = result.pop("model", payload.ai_config.get("modelId"))
+    return {"draft": result, "provider": provider, "model": model}

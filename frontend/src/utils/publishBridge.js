@@ -1,4 +1,6 @@
 export const PUBLISH_SOURCE = 'publish-review-demo'
+export const BRIDGE_PING_EVENT = 'rodas:publish-bridge-ping'
+export const BRIDGE_STATUS_EVENT = 'rodas:publish-bridge-status'
 
 export const PUBLISH_PLATFORMS = [
   {
@@ -59,8 +61,9 @@ function safeWorkUrl(platform, value) {
 }
 
 export function parsePublishTags(value) {
-  const source = Array.isArray(value) ? value : String(value || '').split(/[,，\n]+/)
-  return [...new Set(source.map(tag => String(tag).replace(/^#+/, '').trim()).filter(Boolean))].slice(0, 30)
+  const values = Array.isArray(value) ? value : [value]
+  const source = values.flatMap(item => String(item || '').split(/[,，\n]+|(?=[#＃])/))
+  return [...new Set(source.map(tag => tag.replace(/^[#＃]+/, '').trim()).filter(Boolean))].slice(0, 30)
 }
 
 export function formatPublishCopy({ title, content, tags }) {
@@ -116,4 +119,28 @@ export function parsePublicationReceipt(hash) {
 
 export function publicationReceiptId(receipt) {
   return [receipt?.platform, receipt?.outcome, receipt?.completedAt, receipt?.workUrl || ''].join(':')
+}
+
+export function normalizePublishBridgeStatus(value, expected = {}) {
+  const source = value && typeof value === 'object' ? value : {}
+  const version = typeof source.version === 'string' && /^\d+\.\d+\.\d+$/.test(source.version) ? source.version : ''
+  const appBaseUrl = typeof source.appBaseUrl === 'string' ? source.appBaseUrl.replace(/\/$/, '') : ''
+  const callbackPath = typeof source.callbackPath === 'string' && source.callbackPath.startsWith('/') ? source.callbackPath : ''
+  const expectedOrigin = String(expected.origin || '').replace(/\/$/, '')
+  const expectedCallbackPath = String(expected.callbackPath || '/zh')
+  const detected = source.ok === true && Boolean(version)
+  const originMatches = detected && appBaseUrl === expectedOrigin
+  const callbackMatches = detected && callbackPath === expectedCallbackPath
+  const debuggerEnabled = detected && source.debuggerEnabled === true
+  return {
+    detected,
+    ready: detected && originMatches && callbackMatches && debuggerEnabled,
+    version,
+    appBaseUrl,
+    callbackPath,
+    originMatches,
+    callbackMatches,
+    debuggerEnabled,
+    error: typeof source.error === 'string' ? source.error.slice(0, 240) : ''
+  }
 }
