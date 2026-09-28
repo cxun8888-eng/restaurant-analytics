@@ -6,7 +6,7 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -35,6 +35,13 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     # Imported lazily so model metadata is registered before create_all runs.
-    from backend.models import User  # noqa: F401
+    from backend.models import AdminAuditLog, User  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    # ``create_all`` does not add columns to an existing SQLite/PostgreSQL
+    # table.  This additive migration keeps already-deployed user data intact.
+    user_columns = {column["name"] for column in inspect(engine).get_columns("users")}
+    if "is_admin" not in user_columns:
+        default_value = "0" if engine.dialect.name == "sqlite" else "FALSE"
+        with engine.begin() as connection:
+            connection.execute(text(f"ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT {default_value}"))

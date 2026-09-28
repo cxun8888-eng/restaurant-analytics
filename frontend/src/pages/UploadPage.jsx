@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Card, DataTable, Metric } from '../components/ui'
+import { readActiveAIConfig } from '../utils/ai'
 
 const FIELD_OPTIONS = [
   ['order_id', '订单号'], ['order_time', '订单时间'], ['customer_id', '顾客编号'],
@@ -142,6 +143,7 @@ function MappingReview({ inspection, onConfirm, onCancel, onReselect, onOpenSett
 
 export default function UploadPage({ quality, preview, inspection, onUpload, onConfirm, onCancelInspection, busy, progress, onOpenSettings }) {
   const inputRef = useRef(null)
+  const [pendingFile, setPendingFile] = useState(null)
   const processSteps = [
     ['01', '结构检查', '读取完整文件并生成数据画像'],
     ['02', '智能识别', 'AI 建议字段含义并标出风险'],
@@ -149,8 +151,13 @@ export default function UploadPage({ quality, preview, inspection, onUpload, onC
     ['04', '经营分析', '清洗数据并输出经营答案']
   ]
 
-  const requestUpload = file => {
+  const requestUpload = (file, useRulesWithoutAI = false) => {
     if (!file || busy) return
+    if (!useRulesWithoutAI && !readActiveAIConfig()) {
+      setPendingFile(file)
+      return
+    }
+    setPendingFile(null)
     onUpload(file)
   }
   const reselectFile = () => {
@@ -165,5 +172,6 @@ export default function UploadPage({ quality, preview, inspection, onUpload, onC
     <section className="upload-grid"><Card title="数据如何变成信号" subtitle="每个阶段都会留下可追溯的结果"><div className="process-list">{processSteps.map(([no, title, text]) => <div key={no}><b>{no}</b><span><strong>{title}</strong><small>{text}</small></span><i className="process-line" /></div>)}</div></Card><Card title="准备一份订单账本" subtitle="支持 CSV、XLSX、XLS，AI 只接收结构画像和少量样例"><div className="format-note"><span className="format-mark"><b>CSV</b></span><div><strong>CSV 订单明细</strong><small>订单号 · 时间 · 商品 · 金额等列名均可</small></div></div><div className="format-note"><span className="format-mark xlsx"><b>XLSX</b></span><div><strong>Excel 工作簿</strong><small>支持中文、英文及当前平台导出字段</small></div></div><div className="format-note"><span className="format-mark xls"><b>XLS</b></span><div><strong>旧版 Excel 工作簿</strong><small>兼容旧版平台导出的 .xls 文件</small></div></div><p className="format-footnote">完整文件在后端本地处理，AI 不会接收整份明细。</p></Card></section>
     {quality && <><Card title={inspection ? '预检结果' : '数据质量'} subtitle={`${inspection ? '等待字段确认 · ' : '已完成清洗 · '}${quality.date_range || '当前数据集'}`}><div className="metrics compact"><Metric label="原始行数" value={Number(quality.raw_rows || 0).toLocaleString()} detail="上传文件" /><Metric label="清洗后行数" value={Number(quality.clean_rows || 0).toLocaleString()} detail={inspection ? '预检结果' : '分析数据'} /><Metric label="订单数" value={Number(quality.total_orders || 0).toLocaleString()} detail="去重后" /><Metric label="金额异常" value={Number(quality.anomalies?.amount_outliers?.n_outliers || 0).toLocaleString()} detail="IQR 检测" accent /></div>{quality.issues?.length > 0 && <div className="notice">{quality.issues.join('；')}</div>}{quality.column_mapping?.length > 0 && <div className="field-mapping"><strong>规则识别结果</strong><div>{quality.column_mapping.filter(item => item.source !== '系统生成').map(item => <span key={`${item.source}-${item.field}`}><b>{item.source}</b><i>→</i>{item.label}</span>)}</div></div>}{quality.ai_assistance && ['ready', 'confirmed', 'used', 'translated'].includes(quality.ai_assistance.status) && <div className="ai-assist-note"><strong>AI 表头翻译与字段建议</strong><span>{quality.ai_assistance.provider || '当前未启用服务商'} {inspection ? '已完成表头翻译并生成建议，请在上方确认' : '已参与表头翻译和字段判断'}</span></div>}{quality.ai_assistance?.status === 'fallback' && <div className="ai-assist-note muted"><strong>AI 表头翻译与字段建议</strong><span>{quality.ai_assistance.warnings?.[0] || '已回退到规则识别'}</span></div>}</Card><Card title="数据预览" subtitle={`${inspection ? '代表性样例 · ' : '前 '}${preview?.rows?.length || 0} 行 · ${preview?.columns?.length || 0} 个字段`}><DataTable rows={preview?.rows} columns={(preview?.columns || []).map(column => [column, column])} pageSize={10} /></Card></>}
     {inspection && <MappingReview inspection={inspection} onConfirm={onConfirm} onCancel={onCancelInspection} onReselect={reselectFile} onOpenSettings={onOpenSettings} busy={busy} />}
+    {pendingFile && <div className="mapping-review-backdrop" role="presentation"><section className="ai-upload-prompt" role="dialog" aria-modal="true" aria-labelledby="ai-upload-prompt-title"><button className="mapping-review-close" type="button" onClick={() => setPendingFile(null)} aria-label="关闭提示">×</button><p className="eyebrow">AI / OPTIONAL</p><h2 id="ai-upload-prompt-title">尚未配置 AI 服务商</h2><p>配置 API Key 后，AI 可以辅助翻译表头和建议字段映射；也可以继续使用内置规则，核心分析功能不受影响。</p><div className="ai-upload-file"><span>准备检查</span><strong>{pendingFile.name}</strong></div><div className="ai-upload-actions"><button className="button secondary" type="button" onClick={() => requestUpload(pendingFile, true)}>暂不配置，使用内置规则</button><button className="button" type="button" onClick={() => { setPendingFile(null); onOpenSettings() }}>先配置 API Key</button></div><small>API Key 仅保存在当前浏览器，并只随单次 AI 请求发送。</small></section></div>}
   </main>
 }
