@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from backend.auth import get_current_user, hash_password, set_auth_cookie, user_payload, verify_password, AUTH_COOKIE_NAME
 from backend.ai import AIServiceError, generate_ai_report, generate_publish_copy, suggest_field_mapping
 from backend.database import get_db, init_db
-from backend.models import User
+from backend.models import AdminAuditLog, User
 from backend.storage import Dataset, DatasetStore, PendingUpload, PendingUploadStore
 
 from src.analysis import (
@@ -129,6 +129,10 @@ class ProfileRequest(BaseModel):
 class PasswordChangeRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class AdminUserStatusRequest(BaseModel):
+    is_active: bool
 
 
 class MappingSelection(BaseModel):
@@ -390,6 +394,46 @@ def _normalize_email(value: str) -> str:
     return email
 
 
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="仅管理员可以访问系统管理")
+    return current_user
+
+
+def _audit(
+    db: Session,
+    admin: User,
+    action: str,
+    target_type: str,
+    target_id: str | int,
+    detail: dict[str, Any] | None = None,
+) -> None:
+    db.add(
+        AdminAuditLog(
+            admin_user_id=admin.id,
+            admin_email=admin.email,
+            action=action,
+            target_type=target_type,
+            target_id=str(target_id),
+            detail=json.dumps(detail or {}, ensure_ascii=False),
+        )
+    )
+
+
+def _managed_user(db: Session, user_id: int) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="账号不存在")
+    return user
+
+
+def _assert_manageable_user(admin: User, target: User) -> None:
+    if target.id == admin.id:
+        raise HTTPException(status_code=409, detail="不能在管理后台停用或删除自己的管理员账号")
+    if target.is_admin:
+        raise HTTPException(status_code=409, detail="不能在此处操作其他管理员账号")
+
+
 @app.post("/api/auth/register")
 def register(payload: RegisterRequest, response: Response, db: Session = Depends(get_db)) -> dict[str, Any]:
     email = _normalize_email(payload.email)
@@ -452,6 +496,168 @@ def update_password(payload: PasswordChangeRequest, current_user: User = Depends
     current_user.password_hash = hash_password(payload.new_password)
     db.commit()
     return {"message": "密码已更新"}
+
+
+@app.get("/api/admin/overview")
+def admin_overview(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Account and storage metadata for the integrated admin console.
+
+    Order rows and report contents are deliberately excluded.
+    """
+    users = list(db.scalars(select(User).order_by(User.created_at.desc(), User.id.desc())).all())
+    datasets = sorted(DATASET_STORE.inventory(), key=lambda item: item["created_at"], reverse=True)
+    pending = sorted(PENDING_UPLOAD_STORE.inventory(), key=lambda item: item["created_at"], reverse=True)
+    users_by_id = {user.id: user for user in users}
+
+    dataset_counts: dict[int, int] = {}
+    dataset_bytes: dict[int, int] = {}
+    pending_counts: dict[int, int] = {}
+    for item in datasets:
+        owner_id = item.get("owner_id")
+        if isinstance(owner_id, int):
+            dataset_counts[owner_id] = dataset_counts.get(owner_id, 0) + 1
+            dataset_bytes[owner_id] = dataset_bytes.get(owner_id, 0) + int(item["size_bytes"])
+    for item in pending:
+        owner_id = item.get("owner_id")
+        if isinstance(owner_id, int):
+            pending_counts[owner_id] = pending_counts.get(owner_id, 0) + 1
+
+    logs = list(db.scalars(select(AdminAuditLog).order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc()).limit(80)).all())
+    return _json(
+        {
+            "summary": {
+                "user_count": len(users),
+                "active_user_count": sum(1 for user in users if user.is_active),
+                "dataset_count": len(datasets),
+                "dataset_bytes": sum(int(item["size_bytes"]) for item in datasets),
+                "pending_count": len(pending),
+                "pending_bytes": sum(int(item["size_bytes"]) for item in pending),
+                "expired_pending_count": sum(1 for item in pending if item["expired"]),
+            },
+            "users": [
+                {
+                    **user_payload(user),
+                    "is_active": bool(user.is_active),
+                    "dataset_count": dataset_counts.get(user.id, 0),
+                    "dataset_bytes": dataset_bytes.get(user.id, 0),
+                    "pending_count": pending_counts.get(user.id, 0),
+                }
+                for user in users
+            ],
+            "datasets": [
+                {
+                    **item,
+                    "owner_email": users_by_id.get(item.get("owner_id")).email if users_by_id.get(item.get("owner_id")) else "账号已删除",
+                }
+                for item in datasets
+            ],
+            "audit_logs": [
+                {
+                    "id": log.id,
+                    "admin_email": log.admin_email,
+                    "action": log.action,
+                    "target_type": log.target_type,
+                    "target_id": log.target_id,
+                    "detail": json.loads(log.detail or "{}"),
+                    "created_at": log.created_at,
+                }
+                for log in logs
+            ],
+        }
+    )
+
+
+@app.patch("/api/admin/users/{user_id}")
+def admin_update_user_status(
+    user_id: int,
+    payload: AdminUserStatusRequest,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    target = _managed_user(db, user_id)
+    _assert_manageable_user(admin, target)
+    target.is_active = payload.is_active
+    _audit(db, admin, "user_enabled" if payload.is_active else "user_disabled", "user", target.id, {"email": target.email})
+    db.commit()
+    db.refresh(target)
+    return {"user": {**user_payload(target), "is_active": bool(target.is_active)}}
+
+
+@app.delete("/api/admin/datasets/{dataset_id}")
+def admin_delete_dataset(
+    dataset_id: str,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    item = DATASET_STORE.get(dataset_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="数据集不存在或已经删除")
+    detail = {"filename": item.filename, "owner_id": item.owner_id, "rows": int(len(item.frame))}
+    if not DATASET_STORE.delete(dataset_id):
+        raise HTTPException(status_code=404, detail="数据集不存在或已经删除")
+    _audit(db, admin, "dataset_deleted", "dataset", dataset_id, detail)
+    db.commit()
+    return {"message": "数据集已删除", "dataset_id": dataset_id}
+
+
+@app.delete("/api/admin/users/{user_id}/data")
+def admin_clear_user_data(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    target = _managed_user(db, user_id)
+    _assert_manageable_user(admin, target)
+    dataset_ids = DATASET_STORE.delete_owned(target.id)
+    pending_ids = PENDING_UPLOAD_STORE.delete_owned(target.id)
+    _audit(
+        db,
+        admin,
+        "user_data_cleared",
+        "user",
+        target.id,
+        {"email": target.email, "datasets": len(dataset_ids), "pending_uploads": len(pending_ids)},
+    )
+    db.commit()
+    return {"message": "账号数据已清理", "datasets_deleted": len(dataset_ids), "pending_deleted": len(pending_ids)}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    target = _managed_user(db, user_id)
+    _assert_manageable_user(admin, target)
+    email = target.email
+    dataset_ids = DATASET_STORE.delete_owned(target.id)
+    pending_ids = PENDING_UPLOAD_STORE.delete_owned(target.id)
+    db.delete(target)
+    _audit(
+        db,
+        admin,
+        "user_deleted",
+        "user",
+        target.id,
+        {"email": email, "datasets": len(dataset_ids), "pending_uploads": len(pending_ids)},
+    )
+    db.commit()
+    return {"message": "账号及其数据已删除", "datasets_deleted": len(dataset_ids), "pending_deleted": len(pending_ids)}
+
+
+@app.post("/api/admin/pending/purge")
+def admin_purge_pending(
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    deleted = PENDING_UPLOAD_STORE.purge_expired()
+    _audit(db, admin, "expired_pending_purged", "pending_upload", "expired", {"deleted": deleted})
+    db.commit()
+    return {"message": "过期临时文件已清理", "deleted": deleted}
 
 
 @app.post("/api/datasets/inspect")

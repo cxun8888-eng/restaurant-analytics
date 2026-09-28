@@ -1,4 +1,6 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+// Production is served behind the same Nginx origin.  Keeping the default
+// relative avoids baking a development-only localhost address into the bundle.
+const API = import.meta.env.VITE_API_URL || '/api'
 
 async function request(path, options = {}) {
   const response = await fetch(`${API}${path}`, { ...options, credentials: 'include' })
@@ -63,3 +65,13 @@ export const generatePublishCopy = (payload, aiConfig) => request('/publish/copy
   body: JSON.stringify({ ...payload, ai_config: aiConfig })
 })
 export const deleteDataset = (id) => request(`/datasets/${id}`, { method: 'DELETE' })
+export const getAdminOverview = () => request('/admin/overview')
+export const setAdminUserStatus = (id, isActive) => request(`/admin/users/${id}`, {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ is_active: isActive })
+})
+export const clearAdminUserData = (id) => request(`/admin/users/${id}/data`, { method: 'DELETE' })
+export const deleteAdminUser = (id) => request(`/admin/users/${id}`, { method: 'DELETE' })
+export const deleteAdminDataset = (id) => request(`/admin/datasets/${id}`, { method: 'DELETE' })
+export const purgeAdminPending = () => request('/admin/pending/purge', { method: 'POST' })

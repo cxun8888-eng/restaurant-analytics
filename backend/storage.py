@@ -104,6 +104,43 @@ class DatasetStore:
             return False
         return True
 
+    def inventory(self) -> list[dict[str, Any]]:
+        """Return metadata only, loading at most one persisted frame at a time."""
+        if not self.directory.is_dir():
+            return []
+        records: list[dict[str, Any]] = []
+        for path in self.directory.glob("*.pkl"):
+            dataset_id = path.stem
+            if not DATASET_ID_PATTERN.fullmatch(dataset_id):
+                continue
+            item = self._cache.get(dataset_id)
+            if item is None:
+                try:
+                    with path.open("rb") as handle:
+                        item = pickle.load(handle)
+                except (OSError, pickle.PickleError, EOFError):
+                    continue
+            if not isinstance(item, Dataset):
+                continue
+            records.append(
+                {
+                    "id": dataset_id,
+                    "owner_id": item.owner_id,
+                    "filename": item.filename,
+                    "created_at": item.created_at,
+                    "row_count": int(len(item.frame)),
+                    "size_bytes": int(path.stat().st_size),
+                }
+            )
+        return records
+
+    def delete_owned(self, owner_id: int) -> list[str]:
+        deleted: list[str] = []
+        for item in self.inventory():
+            if item["owner_id"] == owner_id and self.delete(item["id"]):
+                deleted.append(item["id"])
+        return deleted
+
 
 class PendingUploadStore:
     """File-backed store for short-lived, user-scoped upload inspections."""
@@ -121,10 +158,11 @@ class PendingUploadStore:
     def _expired(self, item: PendingUpload) -> bool:
         return (datetime.utcnow() - item.created_at).total_seconds() > self.ttl_seconds
 
-    def purge_expired(self) -> None:
+    def purge_expired(self) -> int:
         """Best-effort cleanup; called on startup and before new inspections."""
         if not self.directory.is_dir():
-            return
+            return 0
+        deleted = 0
         for path in self.directory.glob("*.pkl"):
             inspection_id = path.stem
             item = self._cache.get(inspection_id)
@@ -135,7 +173,8 @@ class PendingUploadStore:
                 except (OSError, pickle.PickleError, EOFError):
                     continue
             if isinstance(item, PendingUpload) and self._expired(item):
-                self.delete(inspection_id)
+                deleted += int(self.delete(inspection_id))
+        return deleted
 
     def get(self, inspection_id: str) -> PendingUpload | None:
         cached = self._cache.get(inspection_id)
@@ -186,3 +225,39 @@ class PendingUploadStore:
         except FileNotFoundError:
             return False
         return True
+
+    def inventory(self) -> list[dict[str, Any]]:
+        if not self.directory.is_dir():
+            return []
+        records: list[dict[str, Any]] = []
+        for path in self.directory.glob("*.pkl"):
+            inspection_id = path.stem
+            if not DATASET_ID_PATTERN.fullmatch(inspection_id):
+                continue
+            item = self._cache.get(inspection_id)
+            if item is None:
+                try:
+                    with path.open("rb") as handle:
+                        item = pickle.load(handle)
+                except (OSError, pickle.PickleError, EOFError):
+                    continue
+            if not isinstance(item, PendingUpload):
+                continue
+            records.append(
+                {
+                    "id": inspection_id,
+                    "owner_id": item.owner_id,
+                    "filename": item.filename,
+                    "created_at": item.created_at,
+                    "size_bytes": int(path.stat().st_size),
+                    "expired": self._expired(item),
+                }
+            )
+        return records
+
+    def delete_owned(self, owner_id: int) -> list[str]:
+        deleted: list[str] = []
+        for item in self.inventory():
+            if item["owner_id"] == owner_id and self.delete(item["id"]):
+                deleted.append(item["id"])
+        return deleted

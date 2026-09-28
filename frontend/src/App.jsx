@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import AppShell, { NAV } from './components/AppShell'
+import AppShell, { ADMIN_NAV, NAV } from './components/AppShell'
 import BrandMark from './components/BrandMark'
 import { Toast } from './components/ui'
 import { confirmDataset, getAnomalies, getCurrentUser, getForecast, getOverview, getPreview, getProducts, getQuality, getReport, getUsers, inspectDataset, logout as logoutRequest, updateAnomalyReview } from './services/api'
@@ -14,11 +14,12 @@ import AnomaliesPage from './pages/AnomaliesPage'
 import AuthPage from './pages/AuthPage'
 import LandingPage from './pages/LandingPage'
 import PublishPage from './pages/PublishPage'
+import AdminPage from './pages/AdminPage'
 import { readActiveAIConfig } from './utils/ai'
 import { buildReportExportHtml, buildWordExportHtml } from './utils/reportExport'
 import { parsePublicationReceipt } from './utils/publishBridge'
 
-function readRoute() { const route = window.location.hash.replace('#', ''); return NAV.some(([key]) => key === route) ? route : 'upload' }
+function readRoute() { const route = window.location.hash.replace('#', ''); return [...NAV, ADMIN_NAV].some(([key]) => key === route) ? route : 'upload' }
 function readDataset() { try { return JSON.parse(localStorage.getItem('restaurant-analytics-dataset') || 'null') || {} } catch { return {} } }
 function readEntryRoute() { const path = window.location.pathname.replace(/\/+$/, '') || '/'; const queryMode = new URLSearchParams(window.location.search).get('mode'); const mode = queryMode === 'register' || path.endsWith('/register') ? 'register' : 'login'; return { isAuth: path.endsWith('/login') || path.endsWith('/register') || queryMode === 'login' || queryMode === 'register', mode } }
 
@@ -55,10 +56,16 @@ export default function App() {
     getCurrentUser().then(payload => setUser(payload.user)).catch(() => setUser(null)).finally(() => setAuthReady(true))
   }, [])
   useEffect(() => {
+    if (authReady && user && tab === 'admin' && !user.is_admin) {
+      window.location.hash = 'upload'
+      setTab('upload')
+    }
+  }, [authReady, user, tab])
+  useEffect(() => {
     if (!user) return
     const savedDataset = readDataset()
     if (!savedDataset.id) {
-      if (readRoute() === 'publish') return
+      if (['publish', 'admin'].includes(readRoute())) return
       try {
         const preferences = JSON.parse(localStorage.getItem('raota-preferences') || '{}')
         if (NAV.some(([key]) => key === preferences.defaultTab)) { window.location.hash = preferences.defaultTab; setTab(preferences.defaultTab) }
@@ -67,7 +74,7 @@ export default function App() {
     }
     setDatasetId(savedDataset.id)
     setFilename(savedDataset.filename || '')
-    loadDataset(savedDataset.id, readRoute() !== 'publish')
+    loadDataset(savedDataset.id, !['publish', 'admin'].includes(readRoute()))
     // 后端数据已持久化，登录后自动恢复当前账户最近一次工作区。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
@@ -146,7 +153,7 @@ export default function App() {
   }
   const handleUserUpdated = updatedUser => setUser(updatedUser)
   const handleDatasetDeleted = () => { setDatasetId(''); setFilename(''); setQuality(null); setPreview(null); setOverview(null); setProducts(null); setUsers(null); setForecast(null); setAnomalies(null); setReport(''); setReportData(null); setReportInfo(null); window.location.hash = 'upload'; setTab('upload'); setToast({ type: 'success', message: '当前数据集已删除' }) }
-  const view = { upload: <UploadPage quality={quality} preview={preview} inspection={inspection} onUpload={handleUpload} onConfirm={handleConfirm} onCancelInspection={cancelInspection} busy={busy} progress={progress} onOpenSettings={() => setOpenSettingsRequest(current => current + 1)} />, overview: <OverviewPage overview={overview} products={products} />, products: <ProductPage products={products} />, users: <UsersPage users={users} />, anomalies: <AnomaliesPage data={anomalies} onReview={reviewAnomaly} />, forecast: <ForecastPage forecast={forecast} onForecast={runForecast} />, screen: <ScreenPage overview={overview} products={products} />, report: <ReportPage report={report} reportData={reportData} reportInfo={reportInfo} onGenerate={generateReport} onDownload={downloadReport} busy={busy} />, publish: <PublishPage user={user} receipt={publicationReceipt} onReceiptHandled={() => setPublicationReceipt(null)} onNotify={setToast} onOpenAISettings={() => setOpenSettingsRequest(current => current + 1)} /> }
+  const view = { upload: <UploadPage quality={quality} preview={preview} inspection={inspection} onUpload={handleUpload} onConfirm={handleConfirm} onCancelInspection={cancelInspection} busy={busy} progress={progress} onOpenSettings={() => setOpenSettingsRequest(current => current + 1)} />, overview: <OverviewPage overview={overview} products={products} />, products: <ProductPage products={products} />, users: <UsersPage users={users} />, anomalies: <AnomaliesPage data={anomalies} onReview={reviewAnomaly} />, forecast: <ForecastPage forecast={forecast} onForecast={runForecast} />, screen: <ScreenPage overview={overview} products={products} />, report: <ReportPage report={report} reportData={reportData} reportInfo={reportInfo} onGenerate={generateReport} onDownload={downloadReport} busy={busy} />, publish: <PublishPage user={user} receipt={publicationReceipt} onReceiptHandled={() => setPublicationReceipt(null)} onNotify={setToast} onOpenAISettings={() => setOpenSettingsRequest(current => current + 1)} />, admin: user?.is_admin ? <AdminPage currentUser={user} onNotify={setToast} /> : null }
 
   if (!authReady) return <main className="auth-page auth-loading"><BrandMark variant="square" className="auth-loading-mark" /><span>正在连接经营台…</span></main>
   if (!user && !entryRoute.isAuth) return <LandingPage onAuth={enterAuth} />
